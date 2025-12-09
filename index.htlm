@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#17355B">
+    <meta name="description" content="Sistema de Gestión Operativa - Azur Hotel & Spa">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Azur Hotel & Spa - Sistema de Gestión</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'azur-blue': '#17355B',
+                        'azur-cream': '#EFEEE8',
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #EFEEE8;
+            margin: 0;
+            padding: 0;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+        
+        const firebaseConfig = {
+            apiKey: "AIzaSyB_LypCFg7wGvAL_1lmXoErtizYbn7e6Jw",
+            authDomain: "azurhotel-2bfc2.firebaseapp.com",
+            databaseURL: "https://azurhotel-2bfc2-default-rtdb.firebaseio.com",
+            projectId: "azurhotel-2bfc2",
+            storageBucket: "azurhotel-2bfc2.appspot.com",
+            messagingSenderId: "1044293260996",
+            appId: "1:1044293260996:web:9048cbe9a0b944b99b1b91"
+        };
+
+        let db = null;
+        let firebaseInitialized = false;
+        
+        try {
+            if (!firebase.apps.length) {
+                firebase.initializeApp(firebaseConfig);
+            }
+            db = firebase.database();
+            firebaseInitialized = true;
+            console.log("✅ Firebase inicializado correctamente");
+        } catch (error) {
+            console.error("❌ Error inicializando Firebase:", error);
+        }
+
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/service-worker.js')
+                    .then(reg => console.log('✅ Service Worker registrado'))
+                    .catch(err => console.log('❌ Error en Service Worker:', err));
+            });
+        }
+
+        const { 
+            Clock, Users, Home, Wrench, Sparkles, UtensilsCrossed, 
+            Briefcase, LogOut, User, Download, FileText, Calendar, 
+            MessageCircle, Bell, Send, X, Image: ImageIcon, 
+            AlertCircle, AlertTriangle, Info 
+        } = lucide;
+
+        const AzurHotelApp = () => {
+            const [currentUser, setCurrentUser] = useState(null);
+            const [rooms, setRooms] = useState([]);
+            const [selectedRoom, setSelectedRoom] = useState(null);
+            const [statusHistory, setStatusHistory] = useState([]);
+            const [messages, setMessages] = useState([]);
+            const [notifications, setNotifications] = useState([]);
+            const [sessionLogs, setSessionLogs] = useState([]);
+            
+            const [showReports, setShowReports] = useState(false);
+            const [showChat, setShowChat] = useState(false);
+            const [showNotifications, setShowNotifications] = useState(false);
+            const [showChangePassword, setShowChangePassword] = useState(false);
+            const [showDashboard, setShowDashboard] = useState(false);
+            
+            const [loginUsername, setLoginUsername] = useState('');
+            const [loginPassword, setLoginPassword] = useState('');
+            const [loginError, setLoginError] = useState('');
+            const [showPassword, setShowPassword] = useState(false);
+            
+            const [newPassword, setNewPassword] = useState('');
+            const [confirmPassword, setConfirmPassword] = useState('');
+            const [passwordError, setPasswordError] = useState('');
+            const [userPasswords, setUserPasswords] = useState({});
+            
+            const [newMessage, setNewMessage] = useState('');
+            const [selectedGroup, setSelectedGroup] = useState('general');
+            const [messagePriority, setMessagePriority] = useState('normal');
+            const [selectedImage, setSelectedImage] = useState(null);
+            const fileInputRef = useRef(null);
+            
+            const [lastActivity, setLastActivity] = useState(Date.now());
+            const [currentTime, setCurrentTime] = useState(new Date());
+
+            const users = [
+                { id: 1, name: 'Federico Echenique', role: 'Gerencia', icon: Briefcase, color: 'bg-azur-blue', canEdit: true, allowedStatuses: ['all'], username: 'fechenique', password: 'azur2024' },
+                { id: 2, name: 'Recepción', role: 'Recepción', icon: Users, color: 'bg-blue-600', canEdit: true, allowedStatuses: ['all'], username: 'recepcion', password: 'recep123' },
+                { id: 3, name: 'Reservas', role: 'Recepción', icon: Users, color: 'bg-blue-600', canEdit: true, allowedStatuses: ['all'], username: 'reservas', password: 'recep123' },
+                { id: 4, name: 'Blanca Heredia', role: 'Housekeeping', icon: Sparkles, color: 'bg-pink-500', canEdit: true, allowedStatuses: ['Limpia', 'En Limpieza', 'Sucia'], username: 'bheredia', password: 'limpia123' },
+                { id: 5, name: 'Natalia Arguello', role: 'Housekeeping', icon: Sparkles, color: 'bg-pink-500', canEdit: true, allowedStatuses: ['Limpia', 'En Limpieza', 'Sucia'], username: 'narguello', password: 'limpia123' },
+                { id: 6, name: 'Victoria Pastori', role: 'Housekeeping', icon: Sparkles, color: 'bg-pink-500', canEdit: true, allowedStatuses: ['Limpia', 'En Limpieza', 'Sucia'], username: 'vpastori', password: 'limpia123' },
+                { id: 7, name: 'Florencia Guzman', role: 'Housekeeping', icon: Sparkles, color: 'bg-pink-500', canEdit: true, allowedStatuses: ['Limpia', 'En Limpieza', 'Sucia'], username: 'fguzman', password: 'limpia123' },
+                { id: 8, name: 'Marcelo Abregu', role: 'Mantenimiento', icon: Wrench, color: 'bg-orange-500', canEdit: true, allowedStatuses: ['En Control Mantenimiento', 'Sucia'], username: 'mabregu', password: 'mant123' },
+                { id: 9, name: 'Javier Acosta', role: 'Mantenimiento', icon: Wrench, color: 'bg-orange-500', canEdit: true, allowedStatuses: ['En Control Mantenimiento', 'Sucia'], username: 'jacosta', password: 'mant123' },
+                { id: 10, name: 'Cristian Bustamante', role: 'Mantenimiento', icon: Wrench, color: 'bg-orange-500', canEdit: true, allowedStatuses: ['En Control Mantenimiento', 'Sucia'], username: 'cbustamante', password: 'mant123' },
+                { id: 11, name: 'Pastor', role: 'Mantenimiento', icon: Wrench, color: 'bg-orange-500', canEdit: true, allowedStatuses: ['En Control Mantenimiento', 'Sucia'], username: 'pastor', password: 'mant123' },
+                { id: 12, name: 'Spa', role: 'Spa', icon: Sparkles, color: 'bg-teal-500', canEdit: false, allowedStatuses: [], username: 'spa', password: 'spa123' },
+                { id: 13, name: 'Despensa', role: 'Restaurant', icon: UtensilsCrossed, color: 'bg-green-500', canEdit: false, allowedStatuses: [], username: 'despensa', password: 'rest123' },
+            ];
+
+            const statusOptions = [
+                { value: 'Limpia', color: 'bg-green-500', textColor: 'text-green-700' },
+                { value: 'Sucia', color: 'bg-red-500', textColor: 'text-red-700' },
+                { value: 'En Limpieza', color: 'bg-yellow-500', textColor: 'text-yellow-700' },
+                { value: 'En Control Mantenimiento', color: 'bg-orange-500', textColor: 'text-orange-700' },
+                { value: 'Bloqueada', color: 'bg-gray-500', textColor: 'text-gray-700' },
+            ];
+
+            useEffect(() => {
+                const initialRooms = [
+                    { id: 1, number: '1', category: 'Standard', floor: 'Primer Piso - Lobby', status: 'Limpia' },
+                    { id: 2, number: '2', category: 'Clásica', floor: 'Primer Piso - Lobby', status: 'Limpia' },
+                    { id: 3, number: '3', category: 'Clásica', floor: 'Primer Piso - Lobby', status: 'Sucia' },
+                    { id: 4, number: '4', category: 'Standard', floor: 'Primer Piso - Lobby', status: 'Limpia' },
+                    { id: 5, number: '5', category: 'Clásica', floor: 'Primer Piso - Lobby', status: 'Limpia' },
+                    { id: 6, number: '6', category: 'Clásica', floor: 'Primer Piso - Lobby', status: 'Sucia' },
+                    { id: 7, number: '7', category: 'Clásica', floor: 'Primer Piso - Lobby', status: 'Limpia' },
+                    { id: 8, number: '8', category: 'Superior', floor: 'Primer Piso - Patio', status: 'Limpia' },
+                    { id: 9, number: '9', category: 'Superior', floor: 'Primer Piso - Patio', status: 'Sucia' },
+                    { id: 10, number: '10', category: 'Standard', floor: 'Primer Piso - Patio', status: 'Limpia' },
+                    { id: 11, number: '11', category: 'Deluxe', floor: 'Primer Piso - Patio', status: 'Limpia' },
+                    { id: 18, number: '18', category: 'Suite Azur', floor: 'Primer Piso - Patio', status: 'Limpia' },
+                    { id: 12, number: '12', category: 'Superior', floor: 'Tercer Piso', status: 'Limpia' },
+                    { id: 14, number: '14', category: 'Deluxe', floor: 'Tercer Piso', status: 'Sucia' },
+                    { id: 15, number: '15', category: 'Clásica', floor: 'Tercer Piso - Terraza', status: 'Limpia' },
+                    { id: 16, number: '16', category: 'Dpto Deluxe', floor: 'Tercer Piso - Terraza', status: 'Limpia' },
+                ];
+
+                if (db && firebaseInitialized) {
+                    const roomsRef = db.ref('rooms');
+                    
+                    roomsRef.once('value', (snapshot) => {
+                        const data = snapshot.val();
+                        if (!data || Object.keys(data).length === 0) {
+                            initialRooms.forEach(room => {
+                                roomsRef.child(room.id.toString()).set(room);
+                            });
+                            setRooms(initialRooms);
+                        }
+                    });
+
+                    roomsRef.on('value', (snapshot) => {
+                        const data = snapshot.val();
+                        if (data) {
+                            const roomsArray = Object.values(data);
+                            setRooms(roomsArray);
+                        }
+                    });
+
+                    const historyRef = db.ref('statusHistory');
+                    historyRef.orderByChild('changedAt').limitToLast(100).on('value', (snapshot) => {
+                        const data = snapshot.val();
+                        if (data) {
+                            const historyArray = Object.values(data).map(item => ({
+                                ...item,
+                                changedAt: new Date(item.changedAt)
+                            })).sort((a, b) => b.changedAt - a.changedAt);
+                            setStatusHistory(historyArray);
+                        }
+                    });
+
+                    const messagesRef = db.ref('messages');
+                    messagesRef.orderByChild('timestamp').limitToLast(50).on('value', (snapshot) => {
+                        const data = snapshot.val();
+                        if (data) {
+                            const messagesArray = Object.values(data).map(item => ({
+                                ...item,
+                                timestamp: new Date(item.timestamp)
+                            })).sort((a, b) => a.timestamp - b.timestamp);
+                            setMessages(messagesArray);
+                        }
+                    });
+
+                    const notificationsRef = db.ref('notifications');
+                    notificationsRef.orderByChild('timestamp').limitToLast(50).on('value', (snapshot) => {
+                        const data = snapshot.val();
+                        if (data) {
+                            const notifArray = Object.values(data).map(item => ({
+                                ...item,
+                                timestamp: new Date(item.timestamp)
+                            })).sort((a, b) => b.timestamp - a.timestamp);
+                            setNotifications(notifArray);
+                        }
+                    });
+
+                    const sessionsRef = db.ref('sessionLogs');
+                    sessionsRef.orderByChild('loginTime').limitToLast(50).on('value', (snapshot) => {
+                        const data = snapshot.val();
+                        if (data) {
+                            const sessionsArray = Object.values(data).map(item => ({
+                                ...item,
+                                loginTime: new Date(item.loginTime),
+                                logoutTime: item.logoutTime ? new Date(item.logoutTime) : null
+                            })).sort((a, b) => b.loginTime - a.loginTime);
+                            setSessionLogs(sessionsArray);
+                        }
+                    });
+
+                    return () => {
+                        roomsRef.off();
+                        historyRef.off();
+                        messagesRef.off();
+                        notificationsRef.off();
+                        sessionsRef.off();
+                    };
+                } else {
+                    setRooms(initialRooms);
+                }
+            }, []);
+
+            useEffect(() => {
+                const timer = setInterval(() => {
+                    setCurrentTime(new Date());
+                }, 1000);
+                return () => clearInterval(timer);
+            }, []);
+
+            useEffect(() => {
+                if (!currentUser) return;
+                
+                const checkInactivity = setInterval(() => {
+                    const now = Date.now();
+                    const inactiveTime = now - lastActivity;
+                    const fifteenMinutes = 15 * 60 * 1000;
+                    
+                    if (inactiveTime > fifteenMinutes) {
+                        handleLogout(true);
+                    }
+                }, 60000);
+                
+                return () => clearInterval(checkInactivity);
+            }, [currentUser, lastActivity]);
+
+            useEffect(() => {
+                if (!currentUser) return;
+                
+                const updateActivity = () => {
+                    setLastActivity(Date.now());
+                };
+                
+                window.addEventListener('click', updateActivity);
+                window.addEventListener('keypress', updateActivity);
+                window.addEventListener('touchstart', updateActivity);
+                
+                return () => {
+                    window.removeEventListener('click', updateActivity);
+                    window.removeEventListener('keypress', updateActivity);
+                    window.removeEventListener('touchstart', updateActivity);
+                };
+            }, [currentUser]);
+
+            const handleLogin = (e) => {
+                e.preventDefault();
+                setLoginError('');
+                
+                const user = users.find(u => u.username === loginUsername);
+                
+                if (!user) {
+                    setLoginError('Usuario no encontrado');
+                    return;
+                }
+                
+                const currentPassword = userPasswords[user.username] || user.password;
+                
+                if (currentPassword !== loginPassword) {
+                    setLoginError('Contraseña incorrecta');
+                    return;
+                }
+                
+                setCurrentUser(user);
+                setLoginUsername('');
+                setLoginPassword('');
+                setLoginError('');
+                setLastActivity(Date.now());
+                
+                const sessionLog = {
+                    userId: user.id,
+                    username: user.username,
+                    name: user.name,
+                    loginTime: new Date().toISOString(),
+                    logoutTime: null,
+                    autoLogout: false
+                };
+                
+                if (db && firebaseInitialized) {
+                    db.ref('sessionLogs').push(sessionLog);
+                }
+            };
+
+            const handleLogout = (isAuto = false) => {
+                if (currentUser && db && firebaseInitialized) {
+                    const sessionsRef = db.ref('sessionLogs');
+                    sessionsRef.orderByChild('userId').equalTo(currentUser.id).limitToLast(1).once('value', (snapshot) => {
+                        snapshot.forEach((childSnapshot) => {
+                            if (!childSnapshot.val().logoutTime) {
+                                childSnapshot.ref.update({
+                                    logoutTime: new Date().toISOString(),
+                                    autoLogout: isAuto
+                                });
+                            }
+                        });
+                    });
+                }
+                
+                setCurrentUser(null);
+                setLoginUsername('');
+                setLoginPassword('');
+                setLoginError('');
+                setShowReports(false);
+                setShowChat(false);
+                setShowNotifications(false);
+                setShowDashboard(false);
+                
+                if (isAuto) {
+                    alert('Tu sesión ha expirado por inactividad (15 minutos)');
+                }
+            };
+
+            const handleChangePassword = () => {
+                setPasswordError('');
+                
+                if (newPassword.length < 6) {
+                    setPasswordError('La contraseña debe tener al menos 6 caracteres');
+                    return;
+                }
+                
+                if (newPassword !== confirmPassword) {
+                    setPasswordError('Las contraseñas no coinciden');
+                    return;
+                }
+                
+                setUserPasswords(prev => ({
+                    ...prev,
+                    [currentUser.username]: newPassword
+                }));
+                
+                setShowChangePassword(false);
+                setNewPassword('');
+                setConfirmPassword('');
+                alert('Contraseña cambiada exitosamente');
+            };
+
+            const handleStatusChange = (roomId, newStatus) => {
+                if (!currentUser.canEdit) return;
+                
+                if (currentUser.allowedStatuses[0] !== 'all' && !currentUser.allowedStatuses.includes(newStatus)) {
+                    return;
+                }
+                
+                const now = new Date();
+                const room = rooms.find(r => r.id === roomId);
+                
+                if (!room) return;
+
+                const historyEntry = {
+                    roomId: roomId,
+                    roomNumber: room.number,
+                    roomCategory: room.category,
+                    previousStatus: room.status,
+                    newStatus: newStatus,
+                    changedBy: currentUser.name,
+                    changedAt: now.toISOString(),
+                    duration: null
+                };
+
+                const lastEntry = statusHistory
+                    .filter(h => h.roomId === roomId && h.newStatus === room.status)
+                    .sort((a, b) => new Date(b.changedAt) - new Date(a.changedAt))[0];
+                
+                if (lastEntry) {
+                    historyEntry.duration = Math.floor((now - new Date(lastEntry.changedAt)) / 1000 / 60);
+                }
+
+                if (db && firebaseInitialized) {
+                    db.ref('rooms/' + roomId).update({
+                        status: newStatus,
+                        lastUpdated: now.toISOString(),
+                        updatedBy: currentUser.name
+                    });
+
+                    db.ref('statusHistory').push(historyEntry);
+                }
+
+                createNotification(room.number, room.status, newStatus, currentUser.name);
+                setSelectedRoom(null);
+            };
+
+            const createNotification = (roomNumber, oldStatus, newStatus, changedBy) => {
+                const notification = {
+                    roomNumber,
+                    oldStatus,
+                    newStatus,
+                    changedBy,
+                    timestamp: new Date().toISOString(),
+                    read: false,
+                    type: getNotificationType(newStatus),
+                    priority: getNotificationPriority(newStatus)
+                };
+                
+                if (db && firebaseInitialized) {
+                    db.ref('notifications').push(notification);
+                }
+            };
+
+            const getNotificationType = (status) => {
+                if (status === 'Limpia') return 'success';
+                if (status === 'Sucia') return 'warning';
+                if (status === 'En Control Mantenimiento') return 'maintenance';
+                if (status === 'Bloqueada') return 'error';
+                return 'info';
+            };
+
+            const getNotificationPriority = (status) => {
+                if (status === 'Bloqueada' || status === 'En Control Mantenimiento') return 'urgente';
+                if (status === 'Sucia') return 'normal';
+                return 'baja';
+            };
+
+            return React.createElement('div', { className: "min-h-screen", style: {backgroundColor: '#EFEEE8'} },
+                !currentUser ? React.createElement('div', { className: "min-h-screen bg-gradient-to-br from-azur-blue to-blue-900 flex items-center justify-center p-4" },
+                    React.createElement('div', { className: "bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full" },
+                        React.createElement('div', { className: "text-center mb-8" },
+                            React.createElement(Home, { className: "w-16 h-16 mx-auto mb-4", style: {color: '#17355B'} }),
+                            React.createElement('h1', { className: "text-3xl font-bold", style: {color: '#17355B'} }, "Azur Hotel & Spa"),
+                            React.createElement('p', { className: "text-gray-600 mt-2" }, "Sistema de Gestión Operativa")
+                        ),
+                        
+                        React.createElement('form', { onSubmit: handleLogin, className: "space-y-4" },
+                            React.createElement('div', null,
+                                React.createElement('label', { className: "block text-sm font-semibold text-gray-700 mb-2" }, "Usuario"),
+                                React.createElement('input', {
+                                    type: "text",
+                                    value: loginUsername,
+                                    onChange: (e) => setLoginUsername(e.target.value),
+                                    placeholder: "Ingresa tu usuario",
+                                    className: "w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2",
+                                    style: { outlineColor: '#17355B' },
+                                    required: true
+                                })
+                            ),
+                            
+                            React.createElement('div', null,
+                                React.createElement('label', { className: "block text-sm font-semibold text-gray-700 mb-2" }, "Contraseña"),
+                                React.createElement('div', { className: "relative" },
+                                    React.createElement('input', {
+                                        type: showPassword ? "text" : "password",
+                                        value: loginPassword,
+                                        onChange: (e) => setLoginPassword(e.target.value),
+                                        placeholder: "Ingresa tu contraseña",
+                                        className: "w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2",
+                                        style: { outlineColor: '#17355B' },
+                                        required: true
+                                    }),
+                                    React.createElement('button', {
+                                        type: "button",
+                                        onClick: () => setShowPassword(!showPassword),
+                                        className: "absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                                    }, showPassword ? '👁️' : '👁️‍🗨️')
+                                )
+                            ),
+                            
+                            loginError && React.createElement('div', { className: "bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm" },
+                                loginError
+                            ),
+                            
+                            React.createElement('button', {
+                                type: "submit",
+                                className: "w-full text-white py-3 rounded-lg font-semibold transition-all hover:opacity-90",
+                                style: {backgroundColor: '#17355B'}
+                            }, "Iniciar Sesión")
+                        ),
+                        
+                        React.createElement('div', { className: "mt-8 pt-6 border-t border-gray-200" },
+                            React.createElement('p', { className: "text-xs text-gray-600 mb-3 font-semibold" }, "Usuarios de prueba:"),
+                            React.createElement('div', { className: "grid grid-cols-2 gap-2 text-xs" },
+                                React.createElement('div', { className: "bg-blue-50 p-2 rounded" },
+                                    React.createElement('div', { className: "font-semibold", style: {color: '#17355B'} }, "Gerencia"),
+                                    React.createElement('div', { className: "text-blue-600" }, "fechenique / azur2024")
+                                ),
+                                React.createElement('div', { className: "bg-blue-50 p-2 rounded" },
+                                    React.createElement('div', { className: "font-semibold text-blue-800" }, "Recepción"),
+                                    React.createElement('div', { className: "text-blue-600" }, "recepcion / recep123")
+                                ),
+                                React.createElement('div', { className: "bg-pink-50 p-2 rounded" },
+                                    React.createElement('div', { className: "font-semibold text-pink-800" }, "Housekeeping"),
+                                    React.createElement('div', { className: "text-pink-600" }, "bheredia / limpia123")
+                                ),
+                                React.createElement('div', { className: "bg-orange-50 p-2 rounded" },
+                                    React.createElement('div', { className: "font-semibold text-orange-800" }, "Mantenimiento"),
+                                    React.createElement('div', { className: "text-orange-600" }, "mabregu / mant123")
+                                )
+                            )
+                        )
+                    )
+                ) : React.createElement('div', { className: "p-8 text-center" },
+                    React.createElement('h1', { className: "text-4xl font-bold mb-4", style: {color: '#17355B'} }, "Bienvenido, " + currentUser.name),
+                    React.createElement('p', { className: "text-gray-600 mb-8" }, "La interfaz completa se está cargando..."),
+                    React.createElement('button', {
+                        onClick: () => handleLogout(false),
+                        className: "text-white px-6 py-3 rounded-lg font-semibold",
+                        style: {backgroundColor: '#17355B'}
+                    }, "Cerrar Sesión"),
+                    React.createElement('div', { className: "mt-8 text-sm text-gray-500" }, 
+                        firebaseInitialized ? '🟢 Conectado a Firebase' : '🔴 Modo Offline'
+                    )
+                )
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(React.createElement(AzurHotelApp));
+
+        lucide.createIcons();
+    </script>
+</body>
+</html>
