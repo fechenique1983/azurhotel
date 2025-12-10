@@ -34,9 +34,8 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 
     <script>
-        const { useState, useEffect } = React;
+        const { useState, useEffect, useRef } = React;
 
-        // Firebase Config
         const firebaseConfig = {
             apiKey: "AIzaSyB_LypCFg7wGvAL_1lmXoErtizYbn7e6Jw",
             authDomain: "azurhotel-2bfc2.firebaseapp.com",
@@ -58,6 +57,27 @@
             console.error("❌ Error Firebase:", error);
         }
 
+        // Iconos SVG simples
+        const BellIcon = () => React.createElement('svg', { className: 'w-5 h-5', fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24' },
+            React.createElement('path', { strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: 2, d: 'M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9' })
+        );
+
+        const ChatIcon = () => React.createElement('svg', { className: 'w-5 h-5', fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24' },
+            React.createElement('path', { strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: 2, d: 'M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z' })
+        );
+
+        const SendIcon = () => React.createElement('svg', { className: 'w-5 h-5', fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24' },
+            React.createElement('path', { strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: 2, d: 'M12 19l9 2-9-18-9 18 9-2zm0 0v-8' })
+        );
+
+        const ImageIconSVG = () => React.createElement('svg', { className: 'w-5 h-5', fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24' },
+            React.createElement('path', { strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: 2, d: 'M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z' })
+        );
+
+        const XIcon = () => React.createElement('svg', { className: 'w-6 h-6', fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24' },
+            React.createElement('path', { strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: 2, d: 'M6 18L18 6M6 6l12 12' })
+        );
+
         function AzurHotelApp() {
             const [user, setUser] = useState(null);
             const [username, setUsername] = useState('');
@@ -66,6 +86,17 @@
             const [rooms, setRooms] = useState([]);
             const [selectedRoom, setSelectedRoom] = useState(null);
             const [statusHistory, setStatusHistory] = useState([]);
+            
+            // Chat y notificaciones
+            const [showChat, setShowChat] = useState(false);
+            const [showNotifications, setShowNotifications] = useState(false);
+            const [messages, setMessages] = useState([]);
+            const [notifications, setNotifications] = useState([]);
+            const [newMessage, setNewMessage] = useState('');
+            const [selectedGroup, setSelectedGroup] = useState('general');
+            const [messagePriority, setMessagePriority] = useState('normal');
+            const [selectedImage, setSelectedImage] = useState(null);
+            const fileInputRef = useRef(null);
 
             const users = [
                 { id: 1, username: 'fechenique', password: 'azur2024', name: 'Federico Echenique', role: 'Gerencia', canEdit: true, allowedStatuses: ['all'] },
@@ -91,7 +122,6 @@
                 { value: 'Bloqueada', color: 'bg-gray-500' }
             ];
 
-            // Inicializar habitaciones
             useEffect(() => {
                 const initialRooms = [
                     { id: 1, number: '1', category: 'Standard', floor: 'Primer Piso - Lobby', status: 'Limpia' },
@@ -114,7 +144,6 @@
 
                 if (db) {
                     const roomsRef = db.ref('rooms');
-                    
                     roomsRef.once('value', (snapshot) => {
                         const data = snapshot.val();
                         if (!data || Object.keys(data).length === 0) {
@@ -139,9 +168,27 @@
                         }
                     });
 
+                    const messagesRef = db.ref('messages');
+                    messagesRef.limitToLast(50).on('value', (snapshot) => {
+                        const data = snapshot.val();
+                        if (data) {
+                            setMessages(Object.values(data).sort((a, b) => a.timestamp - b.timestamp));
+                        }
+                    });
+
+                    const notificationsRef = db.ref('notifications');
+                    notificationsRef.limitToLast(50).on('value', (snapshot) => {
+                        const data = snapshot.val();
+                        if (data) {
+                            setNotifications(Object.values(data).sort((a, b) => b.timestamp - a.timestamp));
+                        }
+                    });
+
                     return () => {
                         roomsRef.off();
                         historyRef.off();
+                        messagesRef.off();
+                        notificationsRef.off();
                     };
                 } else {
                     setRooms(initialRooms);
@@ -161,13 +208,12 @@
 
             const handleStatusChange = (roomId, newStatus) => {
                 if (!user.canEdit) return;
-                
                 if (user.allowedStatuses[0] !== 'all' && !user.allowedStatuses.includes(newStatus)) {
                     return;
                 }
 
                 const room = rooms.find(r => r.id === roomId);
-                const now = new Date().toISOString();
+                const now = Date.now();
 
                 const historyEntry = {
                     roomId,
@@ -184,11 +230,115 @@
                         lastUpdated: now,
                         updatedBy: user.name
                     });
-
                     db.ref('statusHistory').push(historyEntry);
+                    
+                    // Crear notificación
+                    const priority = (newStatus === 'Bloqueada' || newStatus === 'En Control Mantenimiento') ? 'urgente' : 'normal';
+                    db.ref('notifications').push({
+                        type: 'status',
+                        roomNumber: room.number,
+                        oldStatus: room.status,
+                        newStatus,
+                        changedBy: user.name,
+                        timestamp: now,
+                        priority,
+                        read: false
+                    });
                 }
 
                 setSelectedRoom(null);
+            };
+
+            const sendMessage = () => {
+                if (!newMessage.trim() && !selectedImage) return;
+                
+                const message = {
+                    sender: user.name,
+                    senderRole: user.role,
+                    text: newMessage,
+                    image: selectedImage,
+                    timestamp: Date.now(),
+                    group: selectedGroup,
+                    priority: messagePriority
+                };
+                
+                if (db) {
+                    db.ref('messages').push(message);
+                    
+                    // Crear notificación de mensaje
+                    db.ref('notifications').push({
+                        type: 'message',
+                        sender: user.name,
+                        text: newMessage.substring(0, 50) + (newMessage.length > 50 ? '...' : ''),
+                        hasImage: !!selectedImage,
+                        timestamp: Date.now(),
+                        group: selectedGroup,
+                        priority: messagePriority,
+                        read: false
+                    });
+                }
+                
+                setNewMessage('');
+                setSelectedImage(null);
+                setMessagePriority('normal');
+            };
+
+            const handleImageSelect = (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                        setSelectedImage(reader.result);
+                    };
+                    reader.readAsDataURL(file);
+                }
+            };
+
+            const markAllAsRead = () => {
+                if (db) {
+                    notifications.forEach(notif => {
+                        const notifRef = db.ref('notifications');
+                        notifRef.orderByChild('timestamp').equalTo(notif.timestamp).once('value', (snapshot) => {
+                            snapshot.forEach((childSnapshot) => {
+                                childSnapshot.ref.update({ read: true });
+                            });
+                        });
+                    });
+                }
+            };
+
+            const getAvailableGroups = () => {
+                const groups = [
+                    { id: 'general', name: 'General', description: 'Todos' }
+                ];
+                
+                if (user.role === 'Recepción' || user.role === 'Housekeeping') {
+                    groups.push({ id: 'recepcion-housekeeping', name: 'Recepción + Housekeeping', description: 'Limpieza' });
+                }
+                if (user.role === 'Recepción' || user.role === 'Mantenimiento') {
+                    groups.push({ id: 'recepcion-mantenimiento', name: 'Recepción + Mantenimiento', description: 'Mantenimiento' });
+                }
+                if (user.role === 'Gerencia' || user.role === 'Housekeeping') {
+                    groups.push({ id: 'gerencia-housekeeping', name: 'Gerencia + Housekeeping', description: 'Supervisión' });
+                }
+                if (user.role === 'Gerencia' || user.role === 'Recepción') {
+                    groups.push({ id: 'gerencia-recepcion', name: 'Gerencia + Recepción', description: 'Coordinación' });
+                }
+                
+                return groups;
+            };
+
+            const canAccessGroup = (groupId) => {
+                if (groupId === 'general') return true;
+                if (groupId === 'recepcion-housekeeping') return user.role === 'Recepción' || user.role === 'Housekeeping';
+                if (groupId === 'recepcion-mantenimiento') return user.role === 'Recepción' || user.role === 'Mantenimiento';
+                if (groupId === 'gerencia-housekeeping') return user.role === 'Gerencia' || user.role === 'Housekeeping';
+                if (groupId === 'gerencia-recepcion') return user.role === 'Gerencia' || user.role === 'Recepción';
+                return false;
+            };
+
+            const getFilteredMessages = () => {
+                return messages.filter(msg => msg.group === selectedGroup && canAccessGroup(msg.group));
             };
 
             const canChangeToStatus = (status) => {
@@ -211,7 +361,19 @@
                 return floors;
             };
 
-            // Login Screen
+            const formatTime = (timestamp) => {
+                const date = new Date(timestamp);
+                return date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+            };
+
+            const getPriorityBadge = (priority) => {
+                if (priority === 'urgente') return 'bg-red-500';
+                if (priority === 'normal') return 'bg-yellow-500';
+                return 'bg-blue-500';
+            };
+
+            const unreadNotifications = notifications.filter(n => !n.read).length;
+
             if (!user) {
                 return React.createElement('div', {
                     className: 'min-h-screen flex items-center justify-center p-4',
@@ -256,25 +418,11 @@
                                 className: 'w-full text-white py-3 rounded-lg font-semibold hover:opacity-90 transition',
                                 style: { backgroundColor: '#17355B' }
                             }, 'Iniciar Sesión')
-                        ),
-                        React.createElement('div', { className: 'mt-6 pt-6 border-t' },
-                            React.createElement('p', { className: 'text-xs text-gray-600 mb-3 font-semibold' }, 'Usuarios de prueba:'),
-                            React.createElement('div', { className: 'grid grid-cols-2 gap-2 text-xs' },
-                                React.createElement('div', { className: 'bg-blue-50 p-2 rounded' },
-                                    React.createElement('div', { className: 'font-semibold', style: { color: '#17355B' } }, 'Gerencia'),
-                                    React.createElement('div', { className: 'text-blue-600' }, 'fechenique / azur2024')
-                                ),
-                                React.createElement('div', { className: 'bg-pink-50 p-2 rounded' },
-                                    React.createElement('div', { className: 'font-semibold text-pink-800' }, 'Housekeeping'),
-                                    React.createElement('div', { className: 'text-pink-600' }, 'bheredia / limpia123')
-                                )
-                            )
                         )
                     )
                 );
             }
 
-            // Main App
             const roomsByFloor = groupByFloor();
 
             return React.createElement('div', { 
@@ -292,15 +440,175 @@
                                 React.createElement('h1', { className: 'text-xl font-bold' }, 'Azur Hotel & Spa'),
                                 React.createElement('p', { className: 'text-sm opacity-90' }, user.name + ' - ' + user.role)
                             ),
-                            React.createElement('button', {
-                                onClick: () => setUser(null),
-                                className: 'bg-white bg-opacity-20 px-4 py-2 rounded-lg hover:bg-opacity-30 transition'
-                            }, 'Salir')
+                            React.createElement('div', { className: 'flex items-center space-x-3' },
+                                React.createElement('button', {
+                                    onClick: () => { setShowNotifications(!showNotifications); setShowChat(false); },
+                                    className: 'relative bg-white bg-opacity-20 px-4 py-2 rounded-lg hover:bg-opacity-30 transition flex items-center'
+                                },
+                                    React.createElement(BellIcon),
+                                    unreadNotifications > 0 && React.createElement('span', { 
+                                        className: 'absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold' 
+                                    }, unreadNotifications)
+                                ),
+                                React.createElement('button', {
+                                    onClick: () => { setShowChat(!showChat); setShowNotifications(false); },
+                                    className: 'bg-white bg-opacity-20 px-4 py-2 rounded-lg hover:bg-opacity-30 transition flex items-center'
+                                },
+                                    React.createElement(ChatIcon),
+                                    React.createElement('span', { className: 'ml-2' }, 'Chat')
+                                ),
+                                React.createElement('button', {
+                                    onClick: () => setUser(null),
+                                    className: 'bg-white bg-opacity-20 px-4 py-2 rounded-lg hover:bg-opacity-30 transition'
+                                }, 'Salir')
+                            )
                         )
                     )
                 ),
 
-                // Dashboard de estadísticas
+                // Chat
+                showChat && React.createElement('div', { className: 'max-w-5xl mx-auto px-4 py-6' },
+                    React.createElement('div', { className: 'bg-white rounded-lg shadow-lg overflow-hidden', style: { height: '70vh' } },
+                        React.createElement('div', { 
+                            className: 'text-white p-4',
+                            style: { backgroundColor: '#17355B' }
+                        },
+                            React.createElement('h2', { className: 'text-xl font-bold mb-3' }, 'Chat Interno'),
+                            React.createElement('div', { className: 'flex space-x-2 overflow-x-auto' },
+                                getAvailableGroups().map(group =>
+                                    React.createElement('button', {
+                                        key: group.id,
+                                        onClick: () => setSelectedGroup(group.id),
+                                        className: `px-3 py-1 rounded text-sm whitespace-nowrap ${selectedGroup === group.id ? 'bg-white text-blue-600' : 'bg-white bg-opacity-20'}`
+                                    }, group.name)
+                                )
+                            )
+                        ),
+                        React.createElement('div', { className: 'p-4 overflow-y-auto', style: { height: 'calc(70vh - 200px)' } },
+                            getFilteredMessages().length === 0 ? 
+                                React.createElement('div', { className: 'text-center text-gray-400 mt-20' },
+                                    React.createElement('p', null, 'No hay mensajes en este grupo')
+                                ) :
+                                React.createElement('div', { className: 'space-y-4' },
+                                    getFilteredMessages().map((msg, idx) =>
+                                        React.createElement('div', {
+                                            key: idx,
+                                            className: `flex ${msg.sender === user.name ? 'justify-end' : 'justify-start'}`
+                                        },
+                                            React.createElement('div', {
+                                                className: `max-w-md p-3 rounded-lg ${msg.sender === user.name ? 'bg-blue-500 text-white' : 'bg-gray-200'}`
+                                            },
+                                                msg.priority && msg.priority !== 'baja' && React.createElement('div', {
+                                                    className: `text-xs px-2 py-1 rounded mb-2 ${getPriorityBadge(msg.priority)} text-white inline-block`
+                                                }, msg.priority.toUpperCase()),
+                                                React.createElement('div', { className: 'font-semibold text-sm mb-1' }, 
+                                                    msg.sender + ' (' + msg.senderRole +')'
+),
+msg.text && React.createElement('div', { className: 'text-sm' }, msg.text),
+msg.image && React.createElement('img', {
+src: msg.image,
+className: 'rounded mt-2 max-w-full cursor-pointer',
+onClick: () => window.open(msg.image)
+}),
+React.createElement('div', { className: 'text-xs mt-1 opacity-75' }, formatTime(msg.timestamp))
+)
+)
+)
+)
+),
+React.createElement('div', { className: 'border-t p-4' },
+React.createElement('div', { className: 'flex space-x-2 mb-3' },
+['urgente', 'normal', 'baja'].map(priority =>
+React.createElement('button', {
+key: priority,
+onClick: () => setMessagePriority(priority),
+className: px-3 py-1 rounded text-xs font-semibold ${messagePriority === priority ? getPriorityBadge(priority) + ' text-white' : 'bg-gray-200'}
+}, priority.toUpperCase())
+)
+),
+selectedImage && React.createElement('div', { className: 'mb-3 relative inline-block' },
+React.createElement('img', { src: selectedImage, className: 'h-20 rounded border' }),
+React.createElement('button', {
+onClick: () => setSelectedImage(null),
+className: 'absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1'
+}, React.createElement(XIcon))
+),
+React.createElement('div', { className: 'flex space-x-2' },
+React.createElement('input', {
+type: 'file',
+ref: fileInputRef,
+onChange: handleImageSelect,
+accept: 'image/*',
+className: 'hidden'
+}),
+React.createElement('button', {
+onClick: () => fileInputRef.current?.click(),
+className: 'bg-gray-200 px-4 py-2 rounded-lg hover:bg-gray-300'
+}, React.createElement(ImageIconSVG)),
+React.createElement('input', {
+type: 'text',
+value: newMessage,
+onChange: (e) => setNewMessage(e.target.value),
+onKeyPress: (e) => e.key === 'Enter' && sendMessage(),
+placeholder: 'Mensaje...',
+className: 'flex-1 border rounded-lg px-4 py-2 focus:outline-none focus:ring-2'
+}),
+React.createElement('button', {
+onClick: sendMessage,
+className: 'text-white px-6 py-2 rounded-lg hover:opacity-90',
+style: { backgroundColor: '#17355B' }
+}, React.createElement(SendIcon))
+)
+)
+)
+),
+                                       // Notificaciones
+            showNotifications && React.createElement('div', { className: 'max-w-4xl mx-auto px-4 py-6' },
+                React.createElement('div', { className: 'bg-white rounded-lg shadow-lg p-6' },
+                    React.createElement('div', { className: 'flex justify-between items-center mb-6' },
+                        React.createElement('h2', { className: 'text-2xl font-bold', style: { color: '#17355B' } }, 'Notificaciones'),
+                        unreadNotifications > 0 && React.createElement('button', {
+                            onClick: markAllAsRead,
+                            className: 'text-sm text-blue-600 hover:text-blue-800'
+                        }, 'Marcar todas como leídas')
+                    ),
+                    React.createElement('div', { className: 'space-y-3' },
+                        notifications.length === 0 ? 
+                            React.createElement('div', { className: 'text-center text-gray-400 py-12' },
+                                React.createElement('p', null, 'No hay notificaciones')
+                            ) :
+                            notifications.map((notif, idx) =>
+                                React.createElement('div', {
+                                    key: idx,
+                                    className: `p-4 rounded-lg ${notif.read ? 'bg-gray-50' : 'bg-blue-50 border-l-4 border-blue-500'}`
+                                },
+                                    notif.type === 'message' ? 
+                                        React.createElement('div', null,
+                                            React.createElement('div', { className: 'flex justify-between' },
+                                                React.createElement('span', { className: 'font-semibold' }, 'Nuevo mensaje de ' + notif.sender),
+                                                React.createElement('span', { className: 'text-xs text-gray-500' }, formatTime(notif.timestamp))
+                                            ),
+                                            React.createElement('p', { className: 'text-sm text-gray-600 mt-2' }, 
+                                                notif.text + (notif.hasImage ? ' 📷' : '')
+                                            )
+                                        ) :
+                                        React.createElement('div', null,
+                                            React.createElement('div', { className: 'flex justify-between' },
+                                                React.createElement('span', { className: 'font-semibold' }, 'Habitación #' + notif.roomNumber),
+                                                React.createElement('span', { className: 'text-xs text-gray-500' }, formatTime(notif.timestamp))
+                                            ),
+                                            React.createElement('p', { className: 'text-sm text-gray-600 mt-2' },
+                                                notif.oldStatus + ' → ' + notif.newStatus + ' por ' + notif.changedBy
+                                            )
+                                        )
+                                )
+                            )
+                    )
+                )
+            ),
+
+            // Dashboard y habitaciones (solo si no está en chat ni notificaciones)
+            !showChat && !showNotifications && React.createElement(React.Fragment, null,
                 user.role === 'Gerencia' && React.createElement('div', { className: 'max-w-7xl mx-auto px-4 py-6' },
                     React.createElement('div', { className: 'grid grid-cols-4 gap-4 mb-6' },
                         React.createElement('div', { className: 'bg-white rounded-lg shadow p-4' },
@@ -330,7 +638,6 @@
                     )
                 ),
 
-                // Habitaciones
                 React.createElement('div', { className: 'max-w-7xl mx-auto px-4 py-6' },
                     Object.entries(roomsByFloor).map(([floor, floorRooms]) =>
                         React.createElement('div', { key: floor, className: 'mb-8' },
@@ -356,59 +663,58 @@
                             )
                         )
                     )
-                ),
+                )
+            ),
 
-                // Modal de cambio de estado
-                selectedRoom && React.createElement('div', { 
-                    className: 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50',
-                    onClick: () => setSelectedRoom(null)
+            // Modal de cambio de estado
+            selectedRoom && React.createElement('div', { 
+                className: 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50',
+                onClick: () => setSelectedRoom(null)
+            },
+                React.createElement('div', { 
+                    className: 'bg-white rounded-2xl shadow-2xl max-w-md w-full',
+                    onClick: (e) => e.stopPropagation()
                 },
                     React.createElement('div', { 
-                        className: 'bg-white rounded-2xl shadow-2xl max-w-md w-full',
-                        onClick: (e) => e.stopPropagation()
+                        className: `${getStatusColor(selectedRoom.status)} text-white p-6 rounded-t-2xl`
                     },
-                        React.createElement('div', { 
-                            className: `${getStatusColor(selectedRoom.status)} text-white p-6 rounded-t-2xl`
-                        },
-                            React.createElement('h3', { className: 'text-2xl font-bold' }, 'Habitación #' + selectedRoom.number),
-                            React.createElement('p', { className: 'opacity-90' }, selectedRoom.category)
+                        React.createElement('h3', { className: 'text-2xl font-bold' }, 'Habitación #' + selectedRoom.number),
+                        React.createElement('p', { className: 'opacity-90' }, selectedRoom.category)
+                    ),
+                    React.createElement('div', { className: 'p-6' },
+                        React.createElement('p', { className: 'text-gray-700 mb-4 font-semibold' }, 'Cambiar estado a:'),
+                        React.createElement('div', { className: 'space-y-2' },
+                            statusOptions.map(status => {
+                                const isAllowed = canChangeToStatus(status.value);
+                                const isCurrent = status.value === selectedRoom.status;
+                                
+                                return React.createElement('button', {
+                                    key: status.value,
+                                    onClick: () => isAllowed && handleStatusChange(selectedRoom.id, status.value),
+                                    disabled: !isAllowed,
+                                    className: `w-full p-3 rounded-lg font-semibold transition ${
+                                        isCurrent ? status.color + ' text-white' : 
+                                        isAllowed ? 'bg-gray-100 hover:bg-gray-200' : 
+                                        'bg-gray-100 opacity-50 cursor-not-allowed'
+                                    }`
+                                }, status.value + (!isAllowed ? ' 🔒' : ''));
+                            })
                         ),
-                        React.createElement('div', { className: 'p-6' },
-                            React.createElement('p', { className: 'text-gray-700 mb-4 font-semibold' }, 'Cambiar estado a:'),
-                            React.createElement('div', { className: 'space-y-2' },
-                                statusOptions.map(status => {
-                                    const isAllowed = canChangeToStatus(status.value);
-                                    const isCurrent = status.value === selectedRoom.status;
-                                    
-                                    return React.createElement('button', {
-                                        key: status.value,
-                                        onClick: () => isAllowed && handleStatusChange(selectedRoom.id, status.value),
-                                        disabled: !isAllowed,
-                                        className: `w-full p-3 rounded-lg font-semibold transition ${
-                                            isCurrent ? status.color + ' text-white' : 
-                                            isAllowed ? 'bg-gray-100 hover:bg-gray-200' : 
-                                            'bg-gray-100 opacity-50 cursor-not-allowed'
-                                        }`
-                                    }, status.value + (!isAllowed ? ' 🔒' : ''));
-                                })
-                            ),
-                            React.createElement('button', {
-                                onClick: () => setSelectedRoom(null),
-                                className: 'w-full mt-4 bg-gray-200 text-gray-700 p-3 rounded-lg font-semibold hover:bg-gray-300'
-                            }, 'Cancelar')
-                        )
+                        React.createElement('button', {
+                            onClick: () => setSelectedRoom(null),
+                            className: 'w-full mt-4 bg-gray-200 text-gray-700 p-3 rounded-lg font-semibold hover:bg-gray-300'
+                        }, 'Cancelar')
                     )
-                ),
-
-                // Indicador Firebase
-                React.createElement('div', { className: 'fixed bottom-4 right-4 bg-white rounded-lg shadow-lg p-3 text-xs' },
-                    db ? '🟢 Conectado' : '🔴 Offline'
                 )
-            );
-        }
+            ),
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(React.createElement(AzurHotelApp));
-    </script>
-</body>
+            React.createElement('div', { className: 'fixed bottom-4 right-4 bg-white rounded-lg shadow-lg p-3 text-xs' },
+                db ? '🟢 Conectado' : '🔴 Offline'
+            )
+        );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(React.createElement(AzurHotelApp));
+</script></body>
 </html>
