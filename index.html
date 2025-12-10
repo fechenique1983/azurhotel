@@ -30,22 +30,123 @@
 
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 
     <script>
-        const { useState } = React;
+        const { useState, useEffect } = React;
+
+        // Firebase Config
+        const firebaseConfig = {
+            apiKey: "AIzaSyB_LypCFg7wGvAL_1lmXoErtizYbn7e6Jw",
+            authDomain: "azurhotel-2bfc2.firebaseapp.com",
+            databaseURL: "https://azurhotel-2bfc2-default-rtdb.firebaseio.com",
+            projectId: "azurhotel-2bfc2",
+            storageBucket: "azurhotel-2bfc2.appspot.com",
+            messagingSenderId: "1044293260996",
+            appId: "1:1044293260996:web:9048cbe9a0b944b99b1b91"
+        };
+
+        let db = null;
+        try {
+            if (!firebase.apps.length) {
+                firebase.initializeApp(firebaseConfig);
+            }
+            db = firebase.database();
+            console.log("✅ Firebase conectado");
+        } catch (error) {
+            console.error("❌ Error Firebase:", error);
+        }
 
         function AzurHotelApp() {
             const [user, setUser] = useState(null);
             const [username, setUsername] = useState('');
             const [password, setPassword] = useState('');
             const [error, setError] = useState('');
+            const [rooms, setRooms] = useState([]);
+            const [selectedRoom, setSelectedRoom] = useState(null);
+            const [statusHistory, setStatusHistory] = useState([]);
 
             const users = [
-                { username: 'fechenique', password: 'azur2024', name: 'Federico Echenique', role: 'Gerencia' },
-                { username: 'recepcion', password: 'recep123', name: 'Recepción', role: 'Recepción' },
-                { username: 'bheredia', password: 'limpia123', name: 'Blanca Heredia', role: 'Housekeeping' },
-                { username: 'mabregu', password: 'mant123', name: 'Marcelo Abregu', role: 'Mantenimiento' }
+                { id: 1, username: 'fechenique', password: 'azur2024', name: 'Federico Echenique', role: 'Gerencia', canEdit: true, allowedStatuses: ['all'] },
+                { id: 2, username: 'recepcion', password: 'recep123', name: 'Recepción', role: 'Recepción', canEdit: true, allowedStatuses: ['all'] },
+                { id: 3, username: 'reservas', password: 'recep123', name: 'Reservas', role: 'Recepción', canEdit: true, allowedStatuses: ['all'] },
+                { id: 4, username: 'bheredia', password: 'limpia123', name: 'Blanca Heredia', role: 'Housekeeping', canEdit: true, allowedStatuses: ['Limpia', 'En Limpieza', 'Sucia'] },
+                { id: 5, username: 'narguello', password: 'limpia123', name: 'Natalia Arguello', role: 'Housekeeping', canEdit: true, allowedStatuses: ['Limpia', 'En Limpieza', 'Sucia'] },
+                { id: 6, username: 'vpastori', password: 'limpia123', name: 'Victoria Pastori', role: 'Housekeeping', canEdit: true, allowedStatuses: ['Limpia', 'En Limpieza', 'Sucia'] },
+                { id: 7, username: 'fguzman', password: 'limpia123', name: 'Florencia Guzman', role: 'Housekeeping', canEdit: true, allowedStatuses: ['Limpia', 'En Limpieza', 'Sucia'] },
+                { id: 8, username: 'mabregu', password: 'mant123', name: 'Marcelo Abregu', role: 'Mantenimiento', canEdit: true, allowedStatuses: ['En Control Mantenimiento', 'Sucia'] },
+                { id: 9, username: 'jacosta', password: 'mant123', name: 'Javier Acosta', role: 'Mantenimiento', canEdit: true, allowedStatuses: ['En Control Mantenimiento', 'Sucia'] },
+                { id: 10, username: 'cbustamante', password: 'mant123', name: 'Cristian Bustamante', role: 'Mantenimiento', canEdit: true, allowedStatuses: ['En Control Mantenimiento', 'Sucia'] },
+                { id: 11, username: 'pastor', password: 'mant123', name: 'Pastor', role: 'Mantenimiento', canEdit: true, allowedStatuses: ['En Control Mantenimiento', 'Sucia'] },
+                { id: 12, username: 'spa', password: 'spa123', name: 'Spa', role: 'Spa', canEdit: false, allowedStatuses: [] },
+                { id: 13, username: 'despensa', password: 'rest123', name: 'Despensa', role: 'Restaurant', canEdit: false, allowedStatuses: [] }
             ];
+
+            const statusOptions = [
+                { value: 'Limpia', color: 'bg-green-500' },
+                { value: 'Sucia', color: 'bg-red-500' },
+                { value: 'En Limpieza', color: 'bg-yellow-500' },
+                { value: 'En Control Mantenimiento', color: 'bg-orange-500' },
+                { value: 'Bloqueada', color: 'bg-gray-500' }
+            ];
+
+            // Inicializar habitaciones
+            useEffect(() => {
+                const initialRooms = [
+                    { id: 1, number: '1', category: 'Standard', floor: 'Primer Piso - Lobby', status: 'Limpia' },
+                    { id: 2, number: '2', category: 'Clásica', floor: 'Primer Piso - Lobby', status: 'Limpia' },
+                    { id: 3, number: '3', category: 'Clásica', floor: 'Primer Piso - Lobby', status: 'Sucia' },
+                    { id: 4, number: '4', category: 'Standard', floor: 'Primer Piso - Lobby', status: 'Limpia' },
+                    { id: 5, number: '5', category: 'Clásica', floor: 'Primer Piso - Lobby', status: 'Limpia' },
+                    { id: 6, number: '6', category: 'Clásica', floor: 'Primer Piso - Lobby', status: 'Sucia' },
+                    { id: 7, number: '7', category: 'Clásica', floor: 'Primer Piso - Lobby', status: 'Limpia' },
+                    { id: 8, number: '8', category: 'Superior', floor: 'Primer Piso - Patio', status: 'Limpia' },
+                    { id: 9, number: '9', category: 'Superior', floor: 'Primer Piso - Patio', status: 'Sucia' },
+                    { id: 10, number: '10', category: 'Standard', floor: 'Primer Piso - Patio', status: 'Limpia' },
+                    { id: 11, number: '11', category: 'Deluxe', floor: 'Primer Piso - Patio', status: 'Limpia' },
+                    { id: 18, number: '18', category: 'Suite Azur', floor: 'Primer Piso - Patio', status: 'Limpia' },
+                    { id: 12, number: '12', category: 'Superior', floor: 'Tercer Piso', status: 'Limpia' },
+                    { id: 14, number: '14', category: 'Deluxe', floor: 'Tercer Piso', status: 'Sucia' },
+                    { id: 15, number: '15', category: 'Clásica', floor: 'Tercer Piso - Terraza', status: 'Limpia' },
+                    { id: 16, number: '16', category: 'Dpto Deluxe', floor: 'Tercer Piso - Terraza', status: 'Limpia' }
+                ];
+
+                if (db) {
+                    const roomsRef = db.ref('rooms');
+                    
+                    roomsRef.once('value', (snapshot) => {
+                        const data = snapshot.val();
+                        if (!data || Object.keys(data).length === 0) {
+                            initialRooms.forEach(room => {
+                                roomsRef.child(room.id.toString()).set(room);
+                            });
+                        }
+                    });
+
+                    roomsRef.on('value', (snapshot) => {
+                        const data = snapshot.val();
+                        if (data) {
+                            setRooms(Object.values(data));
+                        }
+                    });
+
+                    const historyRef = db.ref('statusHistory');
+                    historyRef.limitToLast(50).on('value', (snapshot) => {
+                        const data = snapshot.val();
+                        if (data) {
+                            setStatusHistory(Object.values(data));
+                        }
+                    });
+
+                    return () => {
+                        roomsRef.off();
+                        historyRef.off();
+                    };
+                } else {
+                    setRooms(initialRooms);
+                }
+            }, []);
 
             const handleLogin = (e) => {
                 e.preventDefault();
@@ -58,6 +159,59 @@
                 }
             };
 
+            const handleStatusChange = (roomId, newStatus) => {
+                if (!user.canEdit) return;
+                
+                if (user.allowedStatuses[0] !== 'all' && !user.allowedStatuses.includes(newStatus)) {
+                    return;
+                }
+
+                const room = rooms.find(r => r.id === roomId);
+                const now = new Date().toISOString();
+
+                const historyEntry = {
+                    roomId,
+                    roomNumber: room.number,
+                    previousStatus: room.status,
+                    newStatus,
+                    changedBy: user.name,
+                    changedAt: now
+                };
+
+                if (db) {
+                    db.ref('rooms/' + roomId).update({
+                        status: newStatus,
+                        lastUpdated: now,
+                        updatedBy: user.name
+                    });
+
+                    db.ref('statusHistory').push(historyEntry);
+                }
+
+                setSelectedRoom(null);
+            };
+
+            const canChangeToStatus = (status) => {
+                if (!user.canEdit) return false;
+                if (user.allowedStatuses[0] === 'all') return true;
+                return user.allowedStatuses.includes(status);
+            };
+
+            const getStatusColor = (status) => {
+                const opt = statusOptions.find(s => s.value === status);
+                return opt?.color || 'bg-gray-500';
+            };
+
+            const groupByFloor = () => {
+                const floors = {};
+                rooms.forEach(room => {
+                    if (!floors[room.floor]) floors[room.floor] = [];
+                    floors[room.floor].push(room);
+                });
+                return floors;
+            };
+
+            // Login Screen
             if (!user) {
                 return React.createElement('div', {
                     className: 'min-h-screen flex items-center justify-center p-4',
@@ -79,7 +233,6 @@
                                     value: username,
                                     onChange: (e) => setUsername(e.target.value),
                                     className: 'w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2',
-                                    style: { outlineColor: '#17355B' },
                                     placeholder: 'Ingresa tu usuario',
                                     required: true
                                 })
@@ -91,7 +244,6 @@
                                     value: password,
                                     onChange: (e) => setPassword(e.target.value),
                                     className: 'w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2',
-                                    style: { outlineColor: '#17355B' },
                                     placeholder: 'Ingresa tu contraseña',
                                     required: true
                                 })
@@ -112,9 +264,9 @@
                                     React.createElement('div', { className: 'font-semibold', style: { color: '#17355B' } }, 'Gerencia'),
                                     React.createElement('div', { className: 'text-blue-600' }, 'fechenique / azur2024')
                                 ),
-                                React.createElement('div', { className: 'bg-blue-50 p-2 rounded' },
-                                    React.createElement('div', { className: 'font-semibold text-blue-800' }, 'Recepción'),
-                                    React.createElement('div', { className: 'text-blue-600' }, 'recepcion / recep123')
+                                React.createElement('div', { className: 'bg-pink-50 p-2 rounded' },
+                                    React.createElement('div', { className: 'font-semibold text-pink-800' }, 'Housekeeping'),
+                                    React.createElement('div', { className: 'text-pink-600' }, 'bheredia / limpia123')
                                 )
                             )
                         )
@@ -122,38 +274,135 @@
                 );
             }
 
+            // Main App
+            const roomsByFloor = groupByFloor();
+
             return React.createElement('div', { 
-                className: 'min-h-screen p-8',
+                className: 'min-h-screen',
                 style: { backgroundColor: '#EFEEE8' }
             },
-                React.createElement('div', { className: 'max-w-4xl mx-auto' },
-                    React.createElement('div', { 
-                        className: 'bg-white rounded-2xl shadow-lg p-8 mb-6',
-                        style: { borderTop: '4px solid #17355B' }
-                    },
-                        React.createElement('div', { className: 'flex justify-between items-center mb-6' },
+                // Header
+                React.createElement('div', { 
+                    className: 'text-white shadow-lg',
+                    style: { backgroundColor: '#17355B' }
+                },
+                    React.createElement('div', { className: 'max-w-7xl mx-auto px-4 py-4' },
+                        React.createElement('div', { className: 'flex justify-between items-center' },
                             React.createElement('div', null,
-                                React.createElement('h1', { 
-                                    className: 'text-3xl font-bold',
-                                    style: { color: '#17355B' }
-                                }, 'Bienvenido, ' + user.name),
-                                React.createElement('p', { className: 'text-gray-600 mt-1' }, 'Rol: ' + user.role)
+                                React.createElement('h1', { className: 'text-xl font-bold' }, 'Azur Hotel & Spa'),
+                                React.createElement('p', { className: 'text-sm opacity-90' }, user.name + ' - ' + user.role)
                             ),
                             React.createElement('button', {
                                 onClick: () => setUser(null),
-                                className: 'px-6 py-3 text-white rounded-lg font-semibold hover:opacity-90 transition',
-                                style: { backgroundColor: '#17355B' }
-                            }, 'Cerrar Sesión')
-                        ),
-                        React.createElement('div', { className: 'bg-green-50 border border-green-200 rounded-lg p-4' },
-                            React.createElement('p', { className: 'text-green-800 font-semibold mb-2' }, '✅ Sistema funcionando correctamente'),
-                            React.createElement('p', { className: 'text-green-700 text-sm' }, 'La versión completa con Firebase, chat, reportes y dashboard está lista para implementar.')
+                                className: 'bg-white bg-opacity-20 px-4 py-2 rounded-lg hover:bg-opacity-30 transition'
+                            }, 'Salir')
                         )
-                    ),
-                    React.createElement('div', { className: 'bg-white rounded-lg shadow p-6 text-center' },
-                        React.createElement('p', { className: 'text-gray-600 mb-4' }, 'Esta es una versión de prueba simplificada.'),
-                        React.createElement('p', { className: 'text-sm text-gray-500' }, 'Contacta al administrador para activar todas las funcionalidades.')
                     )
+                ),
+
+                // Dashboard de estadísticas
+                user.role === 'Gerencia' && React.createElement('div', { className: 'max-w-7xl mx-auto px-4 py-6' },
+                    React.createElement('div', { className: 'grid grid-cols-4 gap-4 mb-6' },
+                        React.createElement('div', { className: 'bg-white rounded-lg shadow p-4' },
+                            React.createElement('div', { className: 'text-sm text-gray-600' }, 'Limpias'),
+                            React.createElement('div', { className: 'text-2xl font-bold text-green-600' },
+                                rooms.filter(r => r.status === 'Limpia').length
+                            )
+                        ),
+                        React.createElement('div', { className: 'bg-white rounded-lg shadow p-4' },
+                            React.createElement('div', { className: 'text-sm text-gray-600' }, 'Sucias'),
+                            React.createElement('div', { className: 'text-2xl font-bold text-red-600' },
+                                rooms.filter(r => r.status === 'Sucia').length
+                            )
+                        ),
+                        React.createElement('div', { className: 'bg-white rounded-lg shadow p-4' },
+                            React.createElement('div', { className: 'text-sm text-gray-600' }, 'En Limpieza'),
+                            React.createElement('div', { className: 'text-2xl font-bold text-yellow-600' },
+                                rooms.filter(r => r.status === 'En Limpieza').length
+                            )
+                        ),
+                        React.createElement('div', { className: 'bg-white rounded-lg shadow p-4' },
+                            React.createElement('div', { className: 'text-sm text-gray-600' }, 'Total'),
+                            React.createElement('div', { className: 'text-2xl font-bold', style: { color: '#17355B' } },
+                                rooms.length
+                            )
+                        )
+                    )
+                ),
+
+                // Habitaciones
+                React.createElement('div', { className: 'max-w-7xl mx-auto px-4 py-6' },
+                    Object.entries(roomsByFloor).map(([floor, floorRooms]) =>
+                        React.createElement('div', { key: floor, className: 'mb-8' },
+                            React.createElement('h2', { 
+                                className: 'text-lg font-bold mb-3',
+                                style: { color: '#17355B' }
+                            }, floor),
+                            React.createElement('div', { className: 'grid grid-cols-4 gap-3' },
+                                floorRooms.map(room =>
+                                    React.createElement('button', {
+                                        key: room.id,
+                                        onClick: () => user.canEdit && setSelectedRoom(room),
+                                        disabled: !user.canEdit,
+                                        className: `${getStatusColor(room.status)} text-white p-4 rounded-lg transition hover:scale-105 ${!user.canEdit && 'opacity-75 cursor-default'}`
+                                    },
+                                        React.createElement('div', { className: 'text-center' },
+                                            React.createElement('div', { className: 'text-3xl font-bold mb-1' }, '#' + room.number),
+                                            React.createElement('div', { className: 'text-xs opacity-90 mb-1' }, room.category),
+                                            React.createElement('div', { className: 'text-xs font-semibold mt-2 border-t border-white border-opacity-30 pt-2' }, room.status)
+                                        )
+                                    )
+                                )
+                            )
+                        )
+                    )
+                ),
+
+                // Modal de cambio de estado
+                selectedRoom && React.createElement('div', { 
+                    className: 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50',
+                    onClick: () => setSelectedRoom(null)
+                },
+                    React.createElement('div', { 
+                        className: 'bg-white rounded-2xl shadow-2xl max-w-md w-full',
+                        onClick: (e) => e.stopPropagation()
+                    },
+                        React.createElement('div', { 
+                            className: `${getStatusColor(selectedRoom.status)} text-white p-6 rounded-t-2xl`
+                        },
+                            React.createElement('h3', { className: 'text-2xl font-bold' }, 'Habitación #' + selectedRoom.number),
+                            React.createElement('p', { className: 'opacity-90' }, selectedRoom.category)
+                        ),
+                        React.createElement('div', { className: 'p-6' },
+                            React.createElement('p', { className: 'text-gray-700 mb-4 font-semibold' }, 'Cambiar estado a:'),
+                            React.createElement('div', { className: 'space-y-2' },
+                                statusOptions.map(status => {
+                                    const isAllowed = canChangeToStatus(status.value);
+                                    const isCurrent = status.value === selectedRoom.status;
+                                    
+                                    return React.createElement('button', {
+                                        key: status.value,
+                                        onClick: () => isAllowed && handleStatusChange(selectedRoom.id, status.value),
+                                        disabled: !isAllowed,
+                                        className: `w-full p-3 rounded-lg font-semibold transition ${
+                                            isCurrent ? status.color + ' text-white' : 
+                                            isAllowed ? 'bg-gray-100 hover:bg-gray-200' : 
+                                            'bg-gray-100 opacity-50 cursor-not-allowed'
+                                        }`
+                                    }, status.value + (!isAllowed ? ' 🔒' : ''));
+                                })
+                            ),
+                            React.createElement('button', {
+                                onClick: () => setSelectedRoom(null),
+                                className: 'w-full mt-4 bg-gray-200 text-gray-700 p-3 rounded-lg font-semibold hover:bg-gray-300'
+                            }, 'Cancelar')
+                        )
+                    )
+                ),
+
+                // Indicador Firebase
+                React.createElement('div', { className: 'fixed bottom-4 right-4 bg-white rounded-lg shadow-lg p-3 text-xs' },
+                    db ? '🟢 Conectado' : '🔴 Offline'
                 )
             );
         }
