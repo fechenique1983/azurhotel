@@ -80,7 +80,7 @@
             const fileInputRef = useRef(null);
 
             const users = [
-                { id: 1, username: 'fechenique', password: 'azur2024', name: 'Federico Echenique', role: 'Gerencia', canEdit: true, allowedStatuses: ['all'] },
+                { id: 1, username: 'fechenique', password: 'azur2024', name: 'Federico Echenique', role: 'Room Division Manager', canEdit: true, allowedStatuses: ['all'] },
                 { id: 2, username: 'recepcion', password: 'recep123', name: 'Recepción', role: 'Recepción', canEdit: true, allowedStatuses: ['all'] },
                 { id: 3, username: 'reservas', password: 'recep123', name: 'Reservas', role: 'Recepción', canEdit: true, allowedStatuses: ['all'] },
                 { id: 4, username: 'bheredia', password: 'limpia123', name: 'Blanca Heredia', role: 'Housekeeping', canEdit: true, allowedStatuses: ['Limpia', 'En Limpieza', 'Sucia'] },
@@ -102,22 +102,22 @@
                 {
                     id: 'frigobar',
                     name: 'Frigobar y Olvidos',
-                    members: ['Recepción', 'Housekeeping', 'Gerencia']
+                    members: ['Recepción', 'Housekeeping', 'Room Division Manager']
                 },
                 {
                     id: 'checkout',
                     name: 'Check Out diario',
-                    members: ['Recepción', 'Mantenimiento', 'Housekeeping', 'Gerencia', 'Calidad']
+                    members: ['Recepción', 'Mantenimiento', 'Housekeeping', 'Room Division Manager', 'Calidad']
                 },
                 {
                     id: 'hsk',
                     name: 'Hsk',
-                    members: ['Gerencia', 'Housekeeping']
+                    members: ['Room Division Manager', 'Housekeeping']
                 },
                 {
                     id: 'recepcion',
                     name: 'Recepción',
-                    members: ['Gerencia', 'Recepción']
+                    members: ['Room Division Manager', 'Recepción']
                 },
                 {
                     id: 'mant',
@@ -127,7 +127,7 @@
                 {
                     id: 'mantenimiento',
                     name: 'Mantenimiento',
-                    members: ['Calidad', 'Gerencia', 'Recepción', 'Mantenimiento']
+                    members: ['Calidad', 'Room Division Manager', 'Recepción', 'Mantenimiento']
                 }
             ];
 
@@ -142,11 +142,11 @@
             // Función para determinar quién debe recibir notificaciones según el rol
             const getNotificationRecipients = (changedByRole) => {
                 if (changedByRole === 'Mantenimiento') {
-                    return ['Recepción', 'Calidad', 'Gerencia', 'Housekeeping'];
+                    return ['Recepción', 'Calidad', 'Room Division Manager', 'Housekeeping'];
                 } else if (changedByRole === 'Housekeeping') {
-                    return ['Recepción', 'Gerencia', 'Housekeeping'];
-                } else if (changedByRole === 'Calidad' || changedByRole === 'Gerencia') {
-                    return ['Calidad', 'Gerencia', 'Recepción'];
+                    return ['Recepción', 'Room Division Manager', 'Housekeeping'];
+                } else if (changedByRole === 'Calidad' || changedByRole === 'Room Division Manager') {
+                    return ['Calidad', 'Room Division Manager', 'Recepción'];
                 }
                 return [];
             };
@@ -472,7 +472,7 @@
                             React.createElement('p', { className: 'text-xs text-gray-600 mb-3 font-semibold' }, 'Usuarios de prueba:'),
                             React.createElement('div', { className: 'grid grid-cols-2 gap-2 text-xs' },
                                 React.createElement('div', { className: 'bg-blue-50 p-2 rounded' },
-                                    React.createElement('div', { className: 'font-semibold', style: { color: '#17355B' } }, 'Gerencia'),
+                                    React.createElement('div', { className: 'font-semibold', style: { color: '#17355B' } }, 'Room Division Manager'),
                                     React.createElement('div', { className: 'text-blue-600' }, 'fechenique / azur2024')
                                 ),
                                 React.createElement('div', { className: 'bg-pink-50 p-2 rounded' },
@@ -523,8 +523,8 @@
                     )
                 ),
 
-                // Dashboard de estadísticas (para Gerencia, Calidad y RRHH)
-                (user.role === 'Gerencia' || user.role === 'Calidad' || user.role === 'RRHH') && React.createElement('div', { className: 'max-w-7xl mx-auto px-4 py-6' },
+                // Dashboard de estadísticas (para Room Division Manager, Calidad y RRHH)
+                (user.role === 'Room Division Manager' || user.role === 'Calidad' || user.role === 'RRHH') && React.createElement('div', { className: 'max-w-7xl mx-auto px-4 py-6' },
                     React.createElement('div', { className: 'grid grid-cols-4 gap-4 mb-6' },
                         React.createElement('div', { className: 'bg-white rounded-lg shadow p-4' },
                             React.createElement('div', { className: 'text-sm text-gray-600' }, 'Limpias'),
