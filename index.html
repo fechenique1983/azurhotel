@@ -157,7 +157,9 @@
             };
 
             // Filtrar grupos accesibles
-            const accessibleGroups = chatGroups.filter(g => canAccessGroup(g));// Inicializar habitaciones
+            const accessibleGroups = chatGroups.filter(g => canAccessGroup(g));
+            
+            // Inicializar habitaciones
             useEffect(() => {
                 const initialRooms = [
                     { id: 1, number: '1', category: 'Standard', floor: 'Primer Piso - Lobby', status: 'Limpia' },
@@ -416,7 +418,9 @@
                 if (!user) return 0;
                 const groupMessages = messages[groupId] || [];
                 return groupMessages.filter(msg => !msg.readBy || !msg.readBy.includes(user.id)).length;
-            };// Login Screen
+            };
+            
+            // Login Screen
             if (!user) {
                 return React.createElement('div', {
                     className: 'min-h-screen flex items-center justify-center p-4',
@@ -615,7 +619,9 @@
                             }, 'Cancelar')
                         )
                     )
-                ),// Panel de Chat
+                ),
+                                       
+                        // Panel de Chat
                 showChat && React.createElement('div', { 
                     className: 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50',
                     onClick: () => setShowChat(false)
