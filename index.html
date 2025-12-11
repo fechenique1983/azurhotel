@@ -77,6 +77,13 @@
             const [notifications, setNotifications] = useState([]);
             const [unreadCount, setUnreadCount] = useState(0);
             const [imageFile, setImageFile] = useState(null);
+            const [showObservations, setShowObservations] = useState(false);
+            const [selectedRoomForObs, setSelectedRoomForObs] = useState(null);
+            const [observations, setObservations] = useState({});
+            const [newObservation, setNewObservation] = useState('');
+            const [showReports, setShowReports] = useState(false);
+            const [reportDateFrom, setReportDateFrom] = useState('');
+            const [reportDateTo, setReportDateTo] = useState('');
             const fileInputRef = useRef(null);
 
             const users = [
@@ -136,6 +143,7 @@
                 { value: 'Sucia', color: 'bg-red-500' },
                 { value: 'En Limpieza', color: 'bg-yellow-500' },
                 { value: 'En Control Mantenimiento', color: 'bg-orange-500' },
+                { value: 'En Control de Calidad', color: 'bg-blue-400' },
                 { value: 'Bloqueada', color: 'bg-gray-500' }
             ];
 
