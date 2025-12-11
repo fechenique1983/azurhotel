@@ -426,7 +426,218 @@
                 const groupMessages = messages[groupId] || [];
                 return groupMessages.filter(msg => !msg.readBy || !msg.readBy.includes(user.id)).length;
             };
-           
+            
+           // Cargar observaciones
+            useEffect(() => {
+                if (!db) return;
+
+                const observationsRef = db.ref('observations');
+                observationsRef.on('value', (snapshot) => {
+                    const data = snapshot.val();
+                    if (data) {
+                        setObservations(data);
+                    }
+                });
+
+                return () => observationsRef.off();
+            }, []);
+
+            const handleAddObservation = () => {
+                if (!newObservation.trim() || !selectedRoomForObs || !db) return;
+
+                const now = Date.now();
+
+                const observation = {
+                    roomId: selectedRoomForObs.id,
+                    roomNumber: selectedRoomForObs.number,
+                    text: newObservation.trim(),
+                    addedBy: user.name,
+                    addedByRole: user.role,
+                    timestamp: now,
+                    status: selectedRoomForObs.status
+                };
+
+                const roomObservations = observations[selectedRoomForObs.id] || [];
+                roomObservations.push(observation);
+
+                db.ref('observations/' + selectedRoomForObs.id).set(roomObservations);
+
+                setNewObservation('');
+                setShowObservations(false);
+                setSelectedRoomForObs(null);
+            };
+
+            const canAddObservations = (room) => {
+                if (room.status !== 'En Control de Calidad') return false;
+                return user.role === 'Calidad' || user.role === 'Room Division Manager';
+            };
+
+            const getRoomObservations = (roomId) => {
+                return observations[roomId] || [];
+            };
+
+            const exportToExcel = (data, filename) => {
+                const worksheet = data.map(row => {
+                    const obj = {};
+                    Object.keys(row).forEach(key => {
+                        obj[key] = row[key];
+                    });
+                    return obj;
+                });
+
+                let csv = '';
+                if (worksheet.length > 0) {
+                    const headers = Object.keys(worksheet[0]);
+                    csv = headers.join(',') + '\n';
+                    worksheet.forEach(row => {
+                        csv += headers.map(h => {
+                            const value = row[h] || '';
+                            return '"' + String(value).replace(/"/g, '""') + '"';
+                        }).join(',') + '\n';
+                    });
+                }
+
+                const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = filename;
+                link.click();
+            };
+
+            const generateMaintenanceReport = () => {
+                const filtered = statusHistory.filter(h => {
+                    const matchRole = h.changedByRole === 'Mantenimiento';
+                    if (!reportDateFrom || !reportDateTo) return matchRole;
+                    
+                    const changeDate = new Date(h.changedAt);
+                    const fromDate = new Date(reportDateFrom);
+                    const toDate = new Date(reportDateTo);
+                    toDate.setHours(23, 59, 59);
+                    
+                    return matchRole && changeDate >= fromDate && changeDate <= toDate;
+                });
+
+                const reportData = filtered.map(h => {
+                    let timeInStatus = '';
+                    if (h.newStatus === 'En Control Mantenimiento') {
+                        const nextChange = statusHistory.find(nh => 
+                            nh.roomId === h.roomId && 
+                            nh.changedAt > h.changedAt &&
+                            nh.previousStatus === 'En Control Mantenimiento'
+                        );
+                        if (nextChange) {
+                            const minutes = Math.round((nextChange.changedAt - h.changedAt) / 60000);
+                            timeInStatus = `${minutes} min`;
+                        }
+                    }
+
+                    return {
+                        'Habitación': h.roomNumber,
+                        'Estado Anterior': h.previousStatus,
+                        'Estado Nuevo': h.newStatus,
+                        'Cambió': h.changedBy,
+                        'Fecha': new Date(h.changedAt).toLocaleDateString('es-AR'),
+                        'Hora': new Date(h.changedAt).toLocaleTimeString('es-AR'),
+                        'Tiempo en Estado': timeInStatus
+                    };
+                });
+
+                exportToExcel(reportData, 'Reporte_Mantenimiento.csv');
+            };
+
+            const generateHousekeepingReport = () => {
+                const filtered = statusHistory.filter(h => {
+                    const matchRole = h.changedByRole === 'Housekeeping';
+                    if (!reportDateFrom || !reportDateTo) return matchRole;
+                    
+                    const changeDate = new Date(h.changedAt);
+                    const fromDate = new Date(reportDateFrom);
+                    const toDate = new Date(reportDateTo);
+                    toDate.setHours(23, 59, 59);
+                    
+                    return matchRole && changeDate >= fromDate && changeDate <= toDate;
+                });
+
+                const reportData = filtered.map(h => {
+                    let timeInStatus = '';
+                    if (h.newStatus === 'En Limpieza') {
+                        const nextChange = statusHistory.find(nh => 
+                            nh.roomId === h.roomId && 
+                            nh.changedAt > h.changedAt &&
+                            nh.previousStatus === 'En Limpieza'
+                        );
+                        if (nextChange) {
+                            const minutes = Math.round((nextChange.changedAt - h.changedAt) / 60000);
+                            timeInStatus = `${minutes} min`;
+                        }
+                    }
+
+                    return {
+                        'Habitación': h.roomNumber,
+                        'Estado Anterior': h.previousStatus,
+                        'Estado Nuevo': h.newStatus,
+                        'Cambió': h.changedBy,
+                        'Fecha': new Date(h.changedAt).toLocaleDateString('es-AR'),
+                        'Hora': new Date(h.changedAt).toLocaleTimeString('es-AR'),
+                        'Tiempo en Estado': timeInStatus
+                    };
+                });
+
+                exportToExcel(reportData, 'Reporte_Housekeeping.csv');
+            };
+
+            const generateQualityReport = () => {
+                const filtered = statusHistory.filter(h => {
+                    const matchStatus = h.newStatus === 'En Control de Calidad' || h.previousStatus === 'En Control de Calidad';
+                    if (!reportDateFrom || !reportDateTo) return matchStatus;
+                    
+                    const changeDate = new Date(h.changedAt);
+                    const fromDate = new Date(reportDateFrom);
+                    const toDate = new Date(reportDateTo);
+                    toDate.setHours(23, 59, 59);
+                    
+                    return matchStatus && changeDate >= fromDate && changeDate <= toDate;
+                });
+
+                const reportData = [];
+                filtered.forEach(h => {
+                    const roomObs = getRoomObservations(h.roomId);
+                    const relevantObs = roomObs.filter(obs => 
+                        obs.timestamp >= h.changedAt && 
+                        obs.status === 'En Control de Calidad'
+                    );
+
+                    reportData.push({
+                        'Habitación': h.roomNumber,
+                        'Estado Anterior': h.previousStatus,
+                        'Estado Nuevo': h.newStatus,
+                        'Cambió': h.changedBy,
+                        'Fecha': new Date(h.changedAt).toLocaleDateString('es-AR'),
+                        'Hora': new Date(h.changedAt).toLocaleTimeString('es-AR'),
+                        'Observaciones': relevantObs.map(o => `[${o.addedBy}] ${o.text}`).join(' | ') || 'Sin observaciones'
+                    });
+                });
+
+                exportToExcel(reportData, 'Reporte_Calidad.csv');
+            };
+
+            const generateCurrentStatusReport = () => {
+                const reportData = rooms.map(r => ({
+                    'Habitación': r.number,
+                    'Categoría': r.category,
+                    'Piso': r.floor,
+                    'Estado': r.status,
+                    'Última Actualización': r.lastUpdated ? new Date(r.lastUpdated).toLocaleString('es-AR') : 'N/A',
+                    'Actualizado Por': r.updatedBy || 'N/A'
+                }));
+
+                exportToExcel(reportData, 'Estados_Actuales.csv');
+            };
+
+            const canAccessReports = () => {
+                return user.role === 'Room Division Manager' || user.role === 'RRHH' || user.role === 'Calidad';
+            };
+            
             // Filtrar grupos accesibles solo si hay usuario logueado
             const accessibleGroups = user ? chatGroups.filter(g => canAccessGroup(g)) : [];
             
