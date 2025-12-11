@@ -157,8 +157,7 @@
             };
 
             // Filtrar grupos accesibles
-            const accessibleGroups = chatGroups.filter(g => canAccessGroup(g));
-            
+                        
             // Inicializar habitaciones
             useEffect(() => {
                 const initialRooms = [
@@ -419,6 +418,9 @@
                 const groupMessages = messages[groupId] || [];
                 return groupMessages.filter(msg => !msg.readBy || !msg.readBy.includes(user.id)).length;
             };
+           
+            // Filtrar grupos accesibles solo si hay usuario logueado
+            const accessibleGroups = user ? chatGroups.filter(g => canAccessGroup(g)) : [];
             
             // Login Screen
             if (!user) {
