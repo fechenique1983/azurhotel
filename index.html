@@ -1,1 +1,787 @@
-<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><meta name="theme-color" content="#17355B"><title>Azur Hotel & Spa</title><script src="https://cdn.tailwindcss.com"></script><script>tailwind.config={theme:{extend:{colors:{'azur-blue':'#17355B','azur-cream':'#EFEEE8'}}}}</script><style>body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background-color:#EFEEE8}</style></head><body><div id="root"></div><script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script><script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script><script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script><script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script><script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script><script>const{useState,useEffect,useRef}=React;const{MessageCircle,Bell,Send,Image:ImageIcon,X,Home:HomeIcon,LogOut,AlertCircle,AlertTriangle,Info}=lucide;const firebaseConfig={apiKey:"AIzaSyB_LypCFg7wGvAL_1lmXoErtizYbn7e6Jw",authDomain:"azurhotel-2bfc2.firebaseapp.com",databaseURL:"https://azurhotel-2bfc2-default-rtdb.firebaseio.com",projectId:"azurhotel-2bfc2",storageBucket:"azurhotel-2bfc2.appspot.com",messagingSenderId:"1044293260996",appId:"1:1044293260996:web:9048cbe9a0b944b99b1b91"};let db=null;try{if(!firebase.apps.length)firebase.initializeApp(firebaseConfig);db=firebase.database()}catch(e){console.error(e)}function App(){const[user,setUser]=useState(null);const[username,setUsername]=useState('');const[password,setPassword]=useState('');const[error,setError]=useState('');const[rooms,setRooms]=useState([]);const[selectedRoom,setSelectedRoom]=useState(null);const[statusHistory,setStatusHistory]=useState([]);const[showChat,setShowChat]=useState(false);const[showNotifications,setShowNotifications]=useState(false);const[messages,setMessages]=useState([]);const[notifications,setNotifications]=useState([]);const[newMessage,setNewMessage]=useState('');const[selectedGroup,setSelectedGroup]=useState('general');const[messagePriority,setMessagePriority]=useState('normal');const[selectedImage,setSelectedImage]=useState(null);const fileInputRef=useRef(null);const users=[{id:1,username:'fechenique',password:'azur2024',name:'Federico Echenique',role:'Gerencia',canEdit:true,allowedStatuses:['all']},{id:2,username:'recepcion',password:'recep123',name:'Recepción',role:'Recepción',canEdit:true,allowedStatuses:['all']},{id:3,username:'reservas',password:'recep123',name:'Reservas',role:'Recepción',canEdit:true,allowedStatuses:['all']},{id:4,username:'bheredia',password:'limpia123',name:'Blanca Heredia',role:'Housekeeping',canEdit:true,allowedStatuses:['Limpia','En Limpieza','Sucia']},{id:5,username:'narguello',password:'limpia123',name:'Natalia Arguello',role:'Housekeeping',canEdit:true,allowedStatuses:['Limpia','En Limpieza','Sucia']},{id:6,username:'vpastori',password:'limpia123',name:'Victoria Pastori',role:'Housekeeping',canEdit:true,allowedStatuses:['Limpia','En Limpieza','Sucia']},{id:7,username:'fguzman',password:'limpia123',name:'Florencia Guzman',role:'Housekeeping',canEdit:true,allowedStatuses:['Limpia','En Limpieza','Sucia']},{id:8,username:'mabregu',password:'mant123',name:'Marcelo Abregu',role:'Mantenimiento',canEdit:true,allowedStatuses:['En Control Mantenimiento','Sucia']},{id:9,username:'jacosta',password:'mant123',name:'Javier Acosta',role:'Mantenimiento',canEdit:true,allowedStatuses:['En Control Mantenimiento','Sucia']},{id:10,username:'cbustamante',password:'mant123',name:'Cristian Bustamante',role:'Mantenimiento',canEdit:true,allowedStatuses:['En Control Mantenimiento','Sucia']},{id:11,username:'pastor',password:'mant123',name:'Pastor',role:'Mantenimiento',canEdit:true,allowedStatuses:['En Control Mantenimiento','Sucia']},{id:12,username:'spa',password:'spa123',name:'Spa',role:'Spa',canEdit:false,allowedStatuses:[]},{id:13,username:'despensa',password:'rest123',name:'Despensa',role:'Restaurant',canEdit:false,allowedStatuses:[]}];const statusOptions=[{value:'Limpia',color:'bg-green-500'},{value:'Sucia',color:'bg-red-500'},{value:'En Limpieza',color:'bg-yellow-500'},{value:'En Control Mantenimiento',color:'bg-orange-500'},{value:'Bloqueada',color:'bg-gray-500'}];useEffect(()=>{const initialRooms=[{id:1,number:'1',category:'Standard',floor:'Primer Piso - Lobby',status:'Limpia'},{id:2,number:'2',category:'Clásica',floor:'Primer Piso - Lobby',status:'Limpia'},{id:3,number:'3',category:'Clásica',floor:'Primer Piso - Lobby',status:'Sucia'},{id:4,number:'4',category:'Standard',floor:'Primer Piso - Lobby',status:'Limpia'},{id:5,number:'5',category:'Clásica',floor:'Primer Piso - Lobby',status:'Limpia'},{id:6,number:'6',category:'Clásica',floor:'Primer Piso - Lobby',status:'Sucia'},{id:7,number:'7',category:'Clásica',floor:'Primer Piso - Lobby',status:'Limpia'},{id:8,number:'8',category:'Superior',floor:'Primer Piso - Patio',status:'Limpia'},{id:9,number:'9',category:'Superior',floor:'Primer Piso - Patio',status:'Sucia'},{id:10,number:'10',category:'Standard',floor:'Primer Piso - Patio',status:'Limpia'},{id:11,number:'11',category:'Deluxe',floor:'Primer Piso - Patio',status:'Limpia'},{id:18,number:'18',category:'Suite Azur',floor:'Primer Piso - Patio',status:'Limpia'},{id:12,number:'12',category:'Superior',floor:'Tercer Piso',status:'Limpia'},{id:14,number:'14',category:'Deluxe',floor:'Tercer Piso',status:'Sucia'},{id:15,number:'15',category:'Clásica',floor:'Tercer Piso - Terraza',status:'Limpia'},{id:16,number:'16',category:'Dpto Deluxe',floor:'Tercer Piso - Terraza',status:'Limpia'}];if(db){const roomsRef=db.ref('rooms');roomsRef.once('value',s=>{const d=s.val();if(!d||Object.keys(d).length===0)initialRooms.forEach(r=>roomsRef.child(r.id.toString()).set(r))});roomsRef.on('value',s=>{const d=s.val();if(d)setRooms(Object.values(d))});db.ref('statusHistory').limitToLast(50).on('value',s=>{const d=s.val();if(d)setStatusHistory(Object.values(d))});db.ref('messages').limitToLast(50).on('value',s=>{const d=s.val();if(d)setMessages(Object.values(d).sort((a,b)=>a.timestamp-b.timestamp))});db.ref('notifications').limitToLast(50).on('value',s=>{const d=s.val();if(d)setNotifications(Object.values(d).sort((a,b)=>b.timestamp-a.timestamp))});return()=>{roomsRef.off();db.ref('statusHistory').off();db.ref('messages').off();db.ref('notifications').off()}}else setRooms(initialRooms)},[]);const handleLogin=e=>{e.preventDefault();const found=users.find(u=>u.username===username&&u.password===password);found?(setUser(found),setError('')):setError('Usuario o contraseña incorrectos')};const handleStatusChange=(roomId,newStatus)=>{if(!user.canEdit)return;if(user.allowedStatuses[0]!=='all'&&!user.allowedStatuses.includes(newStatus))return;const room=rooms.find(r=>r.id===roomId);const now=Date.now();if(db){db.ref('rooms/'+roomId).update({status:newStatus,lastUpdated:now,updatedBy:user.name});db.ref('statusHistory').push({roomId,roomNumber:room.number,previousStatus:room.status,newStatus,changedBy:user.name,changedAt:now});const priority=(newStatus==='Bloqueada'||newStatus==='En Control Mantenimiento')?'urgente':'normal';db.ref('notifications').push({type:'status',roomNumber:room.number,oldStatus:room.status,newStatus,changedBy:user.name,timestamp:now,priority,read:false})}setSelectedRoom(null)};const sendMessage=()=>{if(!newMessage.trim()&&!selectedImage)return;const msg={sender:user.name,senderRole:user.role,text:newMessage,image:selectedImage,timestamp:Date.now(),group:selectedGroup,priority:messagePriority};if(db){db.ref('messages').push(msg);db.ref('notifications').push({type:'message',sender:user.name,text:newMessage.substring(0,50)+(newMessage.length>50?'...':''),hasImage:!!selectedImage,timestamp:Date.now(),group:selectedGroup,priority:messagePriority,read:false})}setNewMessage('');setSelectedImage(null);setMessagePriority('normal')};const handleImageSelect=e=>{const file=e.target.files[0];if(file){const reader=new FileReader();reader.onloadend=()=>setSelectedImage(reader.result);reader.readAsDataURL(file)}};const markAllAsRead=()=>{if(db)notifications.forEach(n=>{db.ref('notifications').orderByChild('timestamp').equalTo(n.timestamp).once('value',s=>s.forEach(c=>c.ref.update({read:true})))})};const getAvailableGroups=()=>{const g=[{id:'general',name:'General',description:'Todos'}];if(user.role==='Recepción'||user.role==='Housekeeping')g.push({id:'recepcion-housekeeping',name:'Recepción + Housekeeping',description:'Limpieza'});if(user.role==='Recepción'||user.role==='Mantenimiento')g.push({id:'recepcion-mantenimiento',name:'Recepción + Mantenimiento',description:'Mantenimiento'});if(user.role==='Gerencia'||user.role==='Housekeeping')g.push({id:'gerencia-housekeeping',name:'Gerencia + Housekeeping',description:'Supervisión'});if(user.role==='Gerencia'||user.role==='Recepción')g.push({id:'gerencia-recepcion',name:'Gerencia + Recepción',description:'Coordinación'});return g};const canAccessGroup=gId=>{if(gId==='general')return true;if(gId==='recepcion-housekeeping')return user.role==='Recepción'||user.role==='Housekeeping';if(gId==='recepcion-mantenimiento')return user.role==='Recepción'||user.role==='Mantenimiento';if(gId==='gerencia-housekeeping')return user.role==='Gerencia'||user.role==='Housekeeping';if(gId==='gerencia-recepcion')return user.role==='Gerencia'||user.role==='Recepción';return false};const getFilteredMessages=()=>messages.filter(m=>m.group===selectedGroup&&canAccessGroup(m.group));const canChangeToStatus=st=>{if(!user.canEdit)return false;if(user.allowedStatuses[0]==='all')return true;return user.allowedStatuses.includes(st)};const getStatusColor=st=>statusOptions.find(s=>s.value===st)?.color||'bg-gray-500';const groupByFloor=()=>{const f={};rooms.forEach(r=>{if(!f[r.floor])f[r.floor]=[];f[r.floor].push(r)});return f};const formatTime=ts=>new Date(ts).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});const getPriorityBadge=p=>p==='urgente'?'bg-red-500':p==='normal'?'bg-yellow-500':'bg-blue-500';const unreadNotifications=notifications.filter(n=>!n.read).length;if(!user){return React.createElement('div',{className:'min-h-screen flex items-center justify-center p-4',style:{background:'linear-gradient(135deg,#17355B 0%,#2563eb 100%)'}},React.createElement('div',{className:'bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full'},React.createElement('div',{className:'text-center mb-8'},React.createElement('h1',{className:'text-3xl font-bold mb-2',style:{color:'#17355B'}},'Azur Hotel & Spa'),React.createElement('p',{className:'text-gray-600'},'Sistema de Gestión Operativa')),React.createElement('form',{onSubmit:handleLogin,className:'space-y-4'},React.createElement('div',null,React.createElement('label',{className:'block text-sm font-semibold text-gray-700 mb-2'},'Usuario'),React.createElement('input',{type:'text',value:username,onChange:e=>setUsername(e.target.value),className:'w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2',placeholder:'Ingresa tu usuario',required:true})),React.createElement('div',null,React.createElement('label',{className:'block text-sm font-semibold text-gray-700 mb-2'},'Contraseña'),React.createElement('input',{type:'password',value:password,onChange:e=>setPassword(e.target.value),className:'w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2',placeholder:'Ingresa tu contraseña',required:true})),error&&React.createElement('div',{className:'bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm'},error),React.createElement('button',{type:'submit',className:'w-full text-white py-3 rounded-lg font-semibold hover:opacity-90 transition',style:{backgroundColor:'#17355B'}},'Iniciar Sesión'))))}const roomsByFloor=groupByFloor();return React.createElement('div',{className:'min-h-screen',style:{backgroundColor:'#EFEEE8'}},React.createElement('div',{className:'text-white shadow-lg',style:{backgroundColor:'#17355B'}},React.createElement('div',{className:'max-w-7xl mx-auto px-4 py-4'},React.createElement('div',{className:'flex justify-between items-center'},React.createElement('div',null,React.createElement('h1',{className:'text-xl font-bold'},'Azur Hotel & Spa'),React.createElement('p',{className:'text-sm opacity-90'},user.name+' - '+user.role)),React.createElement('div',{className:'flex items-center space-x-3'},React.createElement('button',{onClick:()=>{setShowNotifications(!showNotifications);setShowChat(false)},className:'relative bg-white bg-opacity-20 px-4 py-2 rounded-lg hover:bg-opacity-30 transition flex items-center'},React.createElement(Bell,{className:'w-5 h-5'}),unreadNotifications>0&&React.createElement('span',{className:'absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold'},unreadNotifications)),React.createElement('button',{onClick:()=>{setShowChat(!showChat);setShowNotifications(false)},className:'bg-white bg-opacity-20 px-4 py-2 rounded-lg hover:bg-opacity-30 transition flex items-center space-x-2'},React.createElement(MessageCircle,{className:'w-5 h-5'}),React.createElement('span',null,'Chat')),React.createElement('button',{onClick:()=>setUser(null),className:'bg-white bg-opacity-20 px-4 py-2 rounded-lg hover:bg-opacity-30 transition'},'Salir'))))),showChat&&React.createElement('div',{className:'max-w-5xl mx-auto px-4 py-6'},React.createElement('div',{className:'bg-white rounded-lg shadow-lg overflow-hidden',style:{height:'70vh'}},React.createElement('div',{className:'text-white p-4',style:{backgroundColor:'#17355B'}},React.createElement('h2',{className:'text-xl font-bold mb-3'},'Chat Interno'),React.createElement('div',{className:'flex space-x-2 overflow-x-auto'},getAvailableGroups().map(group=>React.createElement('button',{key:group.id,onClick:()=>setSelectedGroup(group.id),className:`px-3 py-1 rounded text-sm whitespace-nowrap ${selectedGroup===group.id?'bg-white text-blue-600':'bg-white bg-opacity-20'}`},group.name)))),React.createElement('div',{className:'p-4 overflow-y-auto',style:{height:'calc(70vh - 200px)'}},getFilteredMessages().length===0?React.createElement('div',{className:'text-center text-gray-400 mt-20'},React.createElement('p',null,'No hay mensajes en este grupo')):React.createElement('div',{className:'space-y-4'},getFilteredMessages().map((msg,idx)=>React.createElement('div',{key:idx,className:`flex ${msg.sender===user.name?'justify-end':'justify-start'}`},React.createElement('div',{className:`max-w-md p-3 rounded-lg ${msg.sender===user.name?'bg-blue-500 text-white':'bg-gray-200'}`},msg.priority&&msg.priority!=='baja'&&React.createElement('div',{className:`text-xs px-2 py-1 rounded mb-2 ${getPriorityBadge(msg.priority)} text-white inline-block`},msg.priority.toUpperCase()),React.createElement('div',{className:'font-semibold text-sm mb-1'},msg.sender+' ('+msg.senderRole+')'),msg.text&&React.createElement('div',{className:'text-sm'},msg.text),msg.image&&React.createElement('img',{src:msg.image,className:'rounded mt-2 max-w-full cursor-pointer',onClick:()=>window.open(msg.image)}),React.createElement('div',{className:'text-xs mt-1 opacity-75'},formatTime(msg.timestamp))))))),React.createElement('div',{className:'border-t p-4'},React.createElement('div',{className:'flex space-x-2 mb-3'},['urgente','normal','baja'].map(priority=>React.createElement('button',{key:priority,onClick:()=>setMessagePriority(priority),className:`px-3 py-1 rounded text-xs font-semibold ${messagePriority===priority?getPriorityBadge(priority)+' text-white':'bg-gray-200'}`},priority.toUpperCase()))),selectedImage&&React.createElement('div',{className:'mb-3 relative inline-block'},React.createElement('img',{src:selectedImage,className:'h-20 rounded border'}),React.createElement('button',{onClick:()=>setSelectedImage(null),className:'absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1'},React.createElement(X,{className:'w-4 h-4'}))),React.createElement('div',{className:'flex space-x-2'},React.createElement('input',{type:'file',ref:fileInputRef,onChange:handleImageSelect,accept:'image/*',className:'hidden'}),React.createElement('button',{onClick:()=>fileInputRef.current?.click(),className:'bg-gray-200 px-4 py-2 rounded-lg hover:bg-gray-300'},React.createElement(ImageIcon,{className:'w-5 h-5'})),React.createElement('input',{type:'text',value:newMessage,onChange:e=>setNewMessage(e.target.value),onKeyPress:e=>e.key==='Enter'&&sendMessage(),placeholder:'Mensaje...',className:'flex-1 border rounded-lg px-4 py-2 focus:outline-none focus:ring-2'}),React.createElement('button',{onClick:sendMessage,className:'text-white px-6 py-2 rounded-lg hover:opacity-90',style:{backgroundColor:'#17355B'}},React.createElement(Send,{className:'w-5 h-5'})))))),showNotifications&&React.createElement('div',{className:'max-w-4xl mx-auto px-4 py-6'},React.createElement('div',{className:'bg-white rounded-lg shadow-lg p-6'},React.createElement('div',{className:'flex justify-between items-center mb-6'},React.createElement('h2',{className:'text-2xl font-bold',style:{color:'#17355B'}},'Notificaciones'),unreadNotifications>0&&React.createElement('button',{onClick:markAllAsRead,className:'text-sm text-blue-600 hover:text-blue-800'},'Marcar todas como leídas')),React.createElement('div',{className:'space-y-3'},notifications.length===0?React.createElement('div',{className:'text-center text-gray-400 py-12'},React.createElement('p',null,'No hay notificaciones')):notifications.map((notif,idx)=>React.createElement('div',{key:idx,className:`p-4 rounded-lg ${notif.read?'bg-gray-50':'bg-blue-50 border-l-4 border-blue-500'}`},notif.type==='message'?React.createElement('div',null,React.createElement('div',{className:'flex justify-between'},React.createElement('span',{className:'font-semibold'},'Nuevo mensaje de '+notif.sender),React.createElement('span',{className:'text-xs text-gray-500'},formatTime(notif.timestamp))),React.createElement('p',{className:'text-sm text-gray-600 mt-2'},notif.text+(notif.hasImage?' 📷':''))):React.createElement('div',null,React.createElement('div',{className:'flex justify-between'},React.createElement('span',{className:'font-semibold'},'Habitación #'+notif.roomNumber),React.createElement('span',{className:'text-xs text-gray-500'},formatTime(notif.timestamp))),React.createElement('p',{className:'text-sm text-gray-600 mt-2'},notif.oldStatus+' → '+notif.newStatus+' por '+notif.changedBy))))))),!showChat&&!showNotifications&&React.createElement(React.Fragment,null,user.role==='Gerencia'&&React.createElement('div',{className:'max-w-7xl mx-auto px-4 py-6'},React.createElement('div',{className:'grid grid-cols-4 gap-4 mb-6'},React.createElement('div',{className:'bg-white rounded-lg shadow p-4'},React.createElement('div',{className:'text-sm text-gray-600'},'Limpias'),React.createElement('div',{className:'text-2xl font-bold text-green-600'},rooms.filter(r=>r.status==='Limpia').length)),React.createElement('div',{className:'bg-white rounded-lg shadow p-4'},React.createElement('div',{className:'text-sm text-gray-600'},'Sucias'),React.createElement('div',{className:'text-2xl font-bold text-red-600'},rooms.filter(r=>r.status==='Sucia').length)),React.createElement('div',{className:'bg-white rounded-lg shadow p-4'},React.createElement('div',{className:'text-sm text-gray-600'},'En Limpieza'),React.createElement('div',{className:'text-2xl font-bold text-yellow-600'},rooms.filter(r=>r.status==='En Limpieza').length)),React.createElement('div',{className:'bg-white rounded-lg shadow p-4'},React.createElement('div',{className:'text-sm text-gray-600'},'Total'),React.createElement('div',{className:'text-2xl font-bold',style:{color:'#17355B'}},rooms.length)))),React.createElement('div',{className:'max-w-7xl mx-auto px-4 py-6'},Object.entries(roomsByFloor).map(([floor,floorRooms])=>React.createElement('div',{key:floor,className:'mb-8'},React.createElement('h2',{className:'text-lg font-bold mb-3',style:{color:'#17355B'}},floor),React.createElement('div',{className:'grid grid-cols-4 gap-3'},floorRooms.map(room=>React.createElement('button',{key:room.id,onClick:()=>user.canEdit&&setSelectedRoom(room),disabled:!user.canEdit,className:`${getStatusColor(room.status)} text-white p-4 rounded-lg transition hover:scale-105 ${!user.canEdit&&'opacity-75 cursor-default'}`},React.createElement('div',{className:'text-center'},React.createElement('div',{className:'text-3xl font-bold mb-1'},'#'+room.number),React.createElement('div',{className:'text-xs opacity-90 mb-1'},room.category),React.createElement('div',{className:'text-xs font-semibold mt-2 border-t border-white border-opacity-30 pt-2'},room.status))))))))),selectedRoom&&React.createElement('div',{className:'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50',onClick:()=>setSelectedRoom(null)},React.createElement('div',{className:'bg-white rounded-2xl shadow-2xl max-w-md w-full',onClick:e=>e.stopPropagation()},React.createElement('div',{className:`${getStatusColor(selectedRoom.status)} text-white p-6 rounded-t-2xl`},React.createElement('h3',{className:'text-2xl font-bold'},'Habitación #'+selectedRoom.number),React.createElement('p',{className:'opacity-90'},selectedRoom.category)),React.createElement('div',{className:'p-6'},React.createElement('p',{className:'text-gray-700 mb-4 font-semibold'},'Cambiar estado a:'),React.createElement('div',{className:'space-y-2'},statusOptions.map(status=>{const isAllowed=canChangeToStatus(status.value);const isCurrent=status.value===selectedRoom.status;return React.createElement('button',{key:status.value,onClick:()=>isAllowed&&handleStatusChange(selectedRoom.id,status.value),disabled:!isAllowed,className:`w-full p-3 rounded-lg font-semibold transition ${isCurrent?status.color+' text-white':isAllowed?'bg-gray-100 hover:bg-gray-200':'bg-gray-100 opacity-50 cursor-not-allowed'}`},status.value+(!isAllowed?' 🔒':''))})),React.createElement('button',{onClick:()=>setSelectedRoom(null),className:'w-full mt-4 bg-gray-200 text-gray-700 p-3 rounded-lg font-semibold hover:bg-gray-300'},'Cancelar')))),React.createElement('div',{className:'fixed bottom-4 right-4 bg-white rounded-lg shadow-lg p-3 text-xs'},db?'🟢 Conectado':'🔴 Offline'))}ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));lucide.createIcons()</script></body></html>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#17355B">
+    <title>Azur Hotel & Spa</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'azur-blue': '#17355B',
+                        'azur-cream': '#EFEEE8',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #EFEEE8;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
+
+    <script>
+        const { useState, useEffect, useRef } = React;
+
+        // Firebase Config
+        const firebaseConfig = {
+            apiKey: "AIzaSyB_LypCFg7wGvAL_1lmXoErtizYbn7e6Jw",
+            authDomain: "azurhotel-2bfc2.firebaseapp.com",
+            databaseURL: "https://azurhotel-2bfc2-default-rtdb.firebaseio.com",
+            projectId: "azurhotel-2bfc2",
+            storageBucket: "azurhotel-2bfc2.appspot.com",
+            messagingSenderId: "1044293260996",
+            appId: "1:1044293260996:web:9048cbe9a0b944b99b1b91"
+        };
+
+        let db = null;
+        let storage = null;
+        try {
+            if (!firebase.apps.length) {
+                firebase.initializeApp(firebaseConfig);
+            }
+            db = firebase.database();
+            storage = firebase.storage();
+            console.log("✅ Firebase conectado");
+        } catch (error) {
+            console.error("❌ Error Firebase:", error);
+        }
+
+        function AzurHotelApp() {
+            const [user, setUser] = useState(null);
+            const [username, setUsername] = useState('');
+            const [password, setPassword] = useState('');
+            const [error, setError] = useState('');
+            const [rooms, setRooms] = useState([]);
+            const [selectedRoom, setSelectedRoom] = useState(null);
+            const [statusHistory, setStatusHistory] = useState([]);
+            const [showChat, setShowChat] = useState(false);
+            const [activeGroup, setActiveGroup] = useState(null);
+            const [messages, setMessages] = useState({});
+            const [newMessage, setNewMessage] = useState('');
+            const [messagePriority, setMessagePriority] = useState('normal');
+            const [notifications, setNotifications] = useState([]);
+            const [unreadCount, setUnreadCount] = useState(0);
+            const [imageFile, setImageFile] = useState(null);
+            const fileInputRef = useRef(null);
+
+            const users = [
+                { id: 1, username: 'fechenique', password: 'azur2024', name: 'Federico Echenique', role: 'Gerencia', canEdit: true, allowedStatuses: ['all'] },
+                { id: 2, username: 'recepcion', password: 'recep123', name: 'Recepción', role: 'Recepción', canEdit: true, allowedStatuses: ['all'] },
+                { id: 3, username: 'reservas', password: 'recep123', name: 'Reservas', role: 'Recepción', canEdit: true, allowedStatuses: ['all'] },
+                { id: 4, username: 'bheredia', password: 'limpia123', name: 'Blanca Heredia', role: 'Housekeeping', canEdit: true, allowedStatuses: ['Limpia', 'En Limpieza', 'Sucia'] },
+                { id: 5, username: 'narguello', password: 'limpia123', name: 'Natalia Arguello', role: 'Housekeeping', canEdit: true, allowedStatuses: ['Limpia', 'En Limpieza', 'Sucia'] },
+                { id: 6, username: 'vpastori', password: 'limpia123', name: 'Victoria Pastori', role: 'Housekeeping', canEdit: true, allowedStatuses: ['Limpia', 'En Limpieza', 'Sucia'] },
+                { id: 7, username: 'fguzman', password: 'limpia123', name: 'Florencia Guzman', role: 'Housekeeping', canEdit: true, allowedStatuses: ['Limpia', 'En Limpieza', 'Sucia'] },
+                { id: 8, username: 'mabregu', password: 'mant123', name: 'Marcelo Abregu', role: 'Mantenimiento', canEdit: true, allowedStatuses: ['En Control Mantenimiento', 'Sucia'] },
+                { id: 9, username: 'jacosta', password: 'mant123', name: 'Javier Acosta', role: 'Mantenimiento', canEdit: true, allowedStatuses: ['En Control Mantenimiento', 'Sucia'] },
+                { id: 10, username: 'cbustamante', password: 'mant123', name: 'Cristian Bustamante', role: 'Mantenimiento', canEdit: true, allowedStatuses: ['En Control Mantenimiento', 'Sucia'] },
+                { id: 11, username: 'pastor', password: 'mant123', name: 'Pastor', role: 'Mantenimiento', canEdit: true, allowedStatuses: ['En Control Mantenimiento', 'Sucia'] },
+                { id: 12, username: 'spa', password: 'spa123', name: 'Spa', role: 'Spa', canEdit: false, allowedStatuses: [] },
+                { id: 13, username: 'despensa', password: 'rest123', name: 'Despensa', role: 'Restaurant', canEdit: false, allowedStatuses: [] },
+                { id: 14, username: 'lapelans', password: 'calidad123', name: 'Lucia Apelans', role: 'Calidad', canEdit: true, allowedStatuses: ['all'] },
+                { id: 15, username: 'cmoyano', password: 'rrhh123', name: 'Catalina Moyano', role: 'RRHH', canEdit: false, allowedStatuses: [] }
+            ];
+
+            // Definición de grupos de chat
+            const chatGroups = [
+                {
+                    id: 'frigobar',
+                    name: 'Frigobar y Olvidos',
+                    members: ['Recepción', 'Housekeeping', 'Gerencia']
+                },
+                {
+                    id: 'checkout',
+                    name: 'Check Out diario',
+                    members: ['Recepción', 'Mantenimiento', 'Housekeeping', 'Gerencia', 'Calidad']
+                },
+                {
+                    id: 'hsk',
+                    name: 'Hsk',
+                    members: ['Gerencia', 'Housekeeping']
+                },
+                {
+                    id: 'recepcion',
+                    name: 'Recepción',
+                    members: ['Gerencia', 'Recepción']
+                },
+                {
+                    id: 'mant',
+                    name: 'Mant',
+                    members: ['Calidad', 'Mantenimiento']
+                },
+                {
+                    id: 'mantenimiento',
+                    name: 'Mantenimiento',
+                    members: ['Calidad', 'Gerencia', 'Recepción', 'Mantenimiento']
+                }
+            ];
+
+            const statusOptions = [
+                { value: 'Limpia', color: 'bg-green-500' },
+                { value: 'Sucia', color: 'bg-red-500' },
+                { value: 'En Limpieza', color: 'bg-yellow-500' },
+                { value: 'En Control Mantenimiento', color: 'bg-orange-500' },
+                { value: 'Bloqueada', color: 'bg-gray-500' }
+            ];
+
+            // Función para determinar quién debe recibir notificaciones según el rol
+            const getNotificationRecipients = (changedByRole) => {
+                if (changedByRole === 'Mantenimiento') {
+                    return ['Recepción', 'Calidad', 'Gerencia', 'Housekeeping'];
+                } else if (changedByRole === 'Housekeeping') {
+                    return ['Recepción', 'Gerencia', 'Housekeeping'];
+                } else if (changedByRole === 'Calidad' || changedByRole === 'Gerencia') {
+                    return ['Calidad', 'Gerencia', 'Recepción'];
+                }
+                return [];
+            };
+
+            // Verificar si el usuario puede ver un grupo
+            const canAccessGroup = (group) => {
+                return group.members.includes(user.role);
+            };
+
+            // Filtrar grupos accesibles
+            const accessibleGroups = chatGroups.filter(g => canAccessGroup(g));// Inicializar habitaciones
+            useEffect(() => {
+                const initialRooms = [
+                    { id: 1, number: '1', category: 'Standard', floor: 'Primer Piso - Lobby', status: 'Limpia' },
+                    { id: 2, number: '2', category: 'Clásica', floor: 'Primer Piso - Lobby', status: 'Limpia' },
+                    { id: 3, number: '3', category: 'Clásica', floor: 'Primer Piso - Lobby', status: 'Sucia' },
+                    { id: 4, number: '4', category: 'Standard', floor: 'Primer Piso - Lobby', status: 'Limpia' },
+                    { id: 5, number: '5', category: 'Clásica', floor: 'Primer Piso - Lobby', status: 'Limpia' },
+                    { id: 6, number: '6', category: 'Clásica', floor: 'Primer Piso - Lobby', status: 'Sucia' },
+                    { id: 7, number: '7', category: 'Clásica', floor: 'Primer Piso - Lobby', status: 'Limpia' },
+                    { id: 8, number: '8', category: 'Superior', floor: 'Primer Piso - Patio', status: 'Limpia' },
+                    { id: 9, number: '9', category: 'Superior', floor: 'Primer Piso - Patio', status: 'Sucia' },
+                    { id: 10, number: '10', category: 'Standard', floor: 'Primer Piso - Patio', status: 'Limpia' },
+                    { id: 11, number: '11', category: 'Deluxe', floor: 'Primer Piso - Patio', status: 'Limpia' },
+                    { id: 18, number: '18', category: 'Suite Azur', floor: 'Primer Piso - Patio', status: 'Limpia' },
+                    { id: 12, number: '12', category: 'Superior', floor: 'Tercer Piso', status: 'Limpia' },
+                    { id: 14, number: '14', category: 'Deluxe', floor: 'Tercer Piso', status: 'Sucia' },
+                    { id: 15, number: '15', category: 'Clásica', floor: 'Tercer Piso - Terraza', status: 'Limpia' },
+                    { id: 16, number: '16', category: 'Dpto Deluxe', floor: 'Tercer Piso - Terraza', status: 'Limpia' }
+                ];
+
+                if (db) {
+                    const roomsRef = db.ref('rooms');
+                    
+                    roomsRef.once('value', (snapshot) => {
+                        const data = snapshot.val();
+                        if (!data || Object.keys(data).length === 0) {
+                            initialRooms.forEach(room => {
+                                roomsRef.child(room.id.toString()).set(room);
+                            });
+                        }
+                    });
+
+                    roomsRef.on('value', (snapshot) => {
+                        const data = snapshot.val();
+                        if (data) {
+                            setRooms(Object.values(data));
+                        }
+                    });
+
+                    const historyRef = db.ref('statusHistory');
+                    historyRef.limitToLast(50).on('value', (snapshot) => {
+                        const data = snapshot.val();
+                        if (data) {
+                            setStatusHistory(Object.values(data));
+                        }
+                    });
+
+                    return () => {
+                        roomsRef.off();
+                        historyRef.off();
+                    };
+                } else {
+                    setRooms(initialRooms);
+                }
+            }, []);
+
+            // Cargar mensajes de chats
+            useEffect(() => {
+                if (!db || !user) return;
+
+                const messagesRef = db.ref('messages');
+                messagesRef.on('value', (snapshot) => {
+                    const data = snapshot.val();
+                    if (data) {
+                        setMessages(data);
+                        calculateUnreadCount(data);
+                    }
+                });
+
+                return () => messagesRef.off();
+            }, [user]);
+
+            // Cargar notificaciones
+            useEffect(() => {
+                if (!db || !user) return;
+
+                const notificationsRef = db.ref('notifications');
+                notificationsRef.orderByChild('timestamp').limitToLast(20).on('value', (snapshot) => {
+                    const data = snapshot.val();
+                    if (data) {
+                        const notifArray = Object.values(data).filter(notif => {
+                            return notif.recipients && notif.recipients.includes(user.role);
+                        }).sort((a, b) => b.timestamp - a.timestamp);
+                        setNotifications(notifArray);
+                    }
+                });
+
+                return () => notificationsRef.off();
+            }, [user]);
+
+            const calculateUnreadCount = (messagesData) => {
+                if (!user) return;
+                
+                let count = 0;
+                accessibleGroups.forEach(group => {
+                    const groupMessages = messagesData[group.id] || [];
+                    groupMessages.forEach(msg => {
+                        if (!msg.readBy || !msg.readBy.includes(user.id)) {
+                            count++;
+                        }
+                    });
+                });
+                setUnreadCount(count);
+            };
+
+            const handleLogin = (e) => {
+                e.preventDefault();
+                const foundUser = users.find(u => u.username === username && u.password === password);
+                if (foundUser) {
+                    setUser(foundUser);
+                    setError('');
+                } else {
+                    setError('Usuario o contraseña incorrectos');
+                }
+            };
+
+            const handleStatusChange = (roomId, newStatus) => {
+                if (!user.canEdit) return;
+                
+                if (user.allowedStatuses[0] !== 'all' && !user.allowedStatuses.includes(newStatus)) {
+                    return;
+                }
+
+                const room = rooms.find(r => r.id === roomId);
+                const now = Date.now();
+
+                const historyEntry = {
+                    roomId,
+                    roomNumber: room.number,
+                    previousStatus: room.status,
+                    newStatus,
+                    changedBy: user.name,
+                    changedByRole: user.role,
+                    changedAt: now
+                };
+
+                if (db) {
+                    db.ref('rooms/' + roomId).update({
+                        status: newStatus,
+                        lastUpdated: now,
+                        updatedBy: user.name
+                    });
+
+                    db.ref('statusHistory').push(historyEntry);
+
+                    // Crear notificación automática
+                    const recipients = getNotificationRecipients(user.role);
+                    const notification = {
+                        type: 'status_change',
+                        message: `${user.name} cambió Hab. #${room.number} de "${room.status}" a "${newStatus}"`,
+                        roomNumber: room.number,
+                        previousStatus: room.status,
+                        newStatus: newStatus,
+                        changedBy: user.name,
+                        recipients: recipients,
+                        timestamp: now,
+                        read: false
+                    };
+
+                    db.ref('notifications').push(notification);
+                }
+
+                setSelectedRoom(null);
+            };
+
+            const handleSendMessage = async () => {
+                if (!newMessage.trim() && !imageFile) return;
+                if (!activeGroup || !db) return;
+
+                const now = Date.now();
+                let imageUrl = null;
+
+                // Subir imagen si existe
+                if (imageFile) {
+                    try {
+                        const storageRef = storage.ref();
+                        const imageRef = storageRef.child(`chat-images/${activeGroup.id}/${now}_${imageFile.name}`);
+                        await imageRef.put(imageFile);
+                        imageUrl = await imageRef.getDownloadURL();
+                    } catch (error) {
+                        console.error('Error subiendo imagen:', error);
+                        alert('Error al subir la imagen');
+                        return;
+                    }
+                }
+
+                const message = {
+                    text: newMessage.trim(),
+                    sender: user.name,
+                    senderRole: user.role,
+                    senderId: user.id,
+                    timestamp: now,
+                    priority: messagePriority,
+                    imageUrl: imageUrl,
+                    readBy: [user.id]
+                };
+
+                const groupMessages = messages[activeGroup.id] || [];
+                groupMessages.push(message);
+
+                db.ref('messages/' + activeGroup.id).set(groupMessages);
+
+                setNewMessage('');
+                setMessagePriority('normal');
+                setImageFile(null);
+                if (fileInputRef.current) {
+                    fileInputRef.current.value = '';
+                }
+            };
+
+            const markGroupAsRead = (groupId) => {
+                if (!db || !user) return;
+
+                const groupMessages = messages[groupId] || [];
+                const updatedMessages = groupMessages.map(msg => {
+                    if (!msg.readBy) msg.readBy = [];
+                    if (!msg.readBy.includes(user.id)) {
+                        msg.readBy.push(user.id);
+                    }
+                    return msg;
+                });
+
+                db.ref('messages/' + groupId).set(updatedMessages);
+            };
+
+            const canChangeToStatus = (status) => {
+                if (!user.canEdit) return false;
+                if (user.allowedStatuses[0] === 'all') return true;
+                return user.allowedStatuses.includes(status);
+            };
+
+            const getStatusColor = (status) => {
+                const opt = statusOptions.find(s => s.value === status);
+                return opt?.color || 'bg-gray-500';
+            };
+
+            const getPriorityColor = (priority) => {
+                switch(priority) {
+                    case 'urgente': return 'border-l-4 border-red-500 bg-red-50';
+                    case 'normal': return 'border-l-4 border-blue-500 bg-white';
+                    case 'baja': return 'border-l-4 border-gray-300 bg-gray-50';
+                    default: return 'bg-white';
+                }
+            };
+
+            const groupByFloor = () => {
+                const floors = {};
+                rooms.forEach(room => {
+                    if (!floors[room.floor]) floors[room.floor] = [];
+                    floors[room.floor].push(room);
+                });
+                return floors;
+            };
+
+            const getUnreadCountForGroup = (groupId) => {
+                if (!user) return 0;
+                const groupMessages = messages[groupId] || [];
+                return groupMessages.filter(msg => !msg.readBy || !msg.readBy.includes(user.id)).length;
+            };// Login Screen
+            if (!user) {
+                return React.createElement('div', {
+                    className: 'min-h-screen flex items-center justify-center p-4',
+                    style: { background: 'linear-gradient(135deg, #17355B 0%, #2563eb 100%)' }
+                },
+                    React.createElement('div', { className: 'bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full' },
+                        React.createElement('div', { className: 'text-center mb-8' },
+                            React.createElement('h1', { 
+                                className: 'text-3xl font-bold mb-2',
+                                style: { color: '#17355B' }
+                            }, 'Azur Hotel & Spa'),
+                            React.createElement('p', { className: 'text-gray-600' }, 'Sistema de Gestión Operativa')
+                        ),
+                        React.createElement('form', { onSubmit: handleLogin, className: 'space-y-4' },
+                            React.createElement('div', null,
+                                React.createElement('label', { className: 'block text-sm font-semibold text-gray-700 mb-2' }, 'Usuario'),
+                                React.createElement('input', {
+                                    type: 'text',
+                                    value: username,
+                                    onChange: (e) => setUsername(e.target.value),
+                                    className: 'w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2',
+                                    placeholder: 'Ingresa tu usuario',
+                                    required: true
+                                })
+                            ),
+                            React.createElement('div', null,
+                                React.createElement('label', { className: 'block text-sm font-semibold text-gray-700 mb-2' }, 'Contraseña'),
+                                React.createElement('input', {
+                                    type: 'password',
+                                    value: password,
+                                    onChange: (e) => setPassword(e.target.value),
+                                    className: 'w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2',
+                                    placeholder: 'Ingresa tu contraseña',
+                                    required: true
+                                })
+                            ),
+                            error && React.createElement('div', { 
+                                className: 'bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm' 
+                            }, error),
+                            React.createElement('button', {
+                                type: 'submit',
+                                className: 'w-full text-white py-3 rounded-lg font-semibold hover:opacity-90 transition',
+                                style: { backgroundColor: '#17355B' }
+                            }, 'Iniciar Sesión')
+                        ),
+                        React.createElement('div', { className: 'mt-6 pt-6 border-t' },
+                            React.createElement('p', { className: 'text-xs text-gray-600 mb-3 font-semibold' }, 'Usuarios de prueba:'),
+                            React.createElement('div', { className: 'grid grid-cols-2 gap-2 text-xs' },
+                                React.createElement('div', { className: 'bg-blue-50 p-2 rounded' },
+                                    React.createElement('div', { className: 'font-semibold', style: { color: '#17355B' } }, 'Gerencia'),
+                                    React.createElement('div', { className: 'text-blue-600' }, 'fechenique / azur2024')
+                                ),
+                                React.createElement('div', { className: 'bg-pink-50 p-2 rounded' },
+                                    React.createElement('div', { className: 'font-semibold text-pink-800' }, 'Housekeeping'),
+                                    React.createElement('div', { className: 'text-pink-600' }, 'bheredia / limpia123')
+                                )
+                            )
+                        )
+                    )
+                );
+            }
+
+            // Main App
+            const roomsByFloor = groupByFloor();
+
+            return React.createElement('div', { 
+                className: 'min-h-screen',
+                style: { backgroundColor: '#EFEEE8' }
+            },
+                // Header
+                React.createElement('div', { 
+                    className: 'text-white shadow-lg',
+                    style: { backgroundColor: '#17355B' }
+                },
+                    React.createElement('div', { className: 'max-w-7xl mx-auto px-4 py-4' },
+                        React.createElement('div', { className: 'flex justify-between items-center' },
+                            React.createElement('div', null,
+                                React.createElement('h1', { className: 'text-xl font-bold' }, 'Azur Hotel & Spa'),
+                                React.createElement('p', { className: 'text-sm opacity-90' }, user.name + ' - ' + user.role)
+                            ),
+                            React.createElement('div', { className: 'flex items-center gap-3' },
+                                // Botón de notificaciones/chat
+                                React.createElement('button', {
+                                    onClick: () => setShowChat(!showChat),
+                                    className: 'relative bg-white bg-opacity-20 p-3 rounded-lg hover:bg-opacity-30 transition'
+                                },
+                                    React.createElement('span', { className: 'text-2xl' }, '💬'),
+                                    unreadCount > 0 && React.createElement('span', {
+                                        className: 'absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold'
+                                    }, unreadCount > 99 ? '99+' : unreadCount)
+                                ),
+                                React.createElement('button', {
+                                    onClick: () => setUser(null),
+                                    className: 'bg-white bg-opacity-20 px-4 py-2 rounded-lg hover:bg-opacity-30 transition'
+                                }, 'Salir')
+                            )
+                        )
+                    )
+                ),
+
+                // Dashboard de estadísticas (para Gerencia, Calidad y RRHH)
+                (user.role === 'Gerencia' || user.role === 'Calidad' || user.role === 'RRHH') && React.createElement('div', { className: 'max-w-7xl mx-auto px-4 py-6' },
+                    React.createElement('div', { className: 'grid grid-cols-4 gap-4 mb-6' },
+                        React.createElement('div', { className: 'bg-white rounded-lg shadow p-4' },
+                            React.createElement('div', { className: 'text-sm text-gray-600' }, 'Limpias'),
+                            React.createElement('div', { className: 'text-2xl font-bold text-green-600' },
+                                rooms.filter(r => r.status === 'Limpia').length
+                            )
+                        ),
+                        React.createElement('div', { className: 'bg-white rounded-lg shadow p-4' },
+                            React.createElement('div', { className: 'text-sm text-gray-600' }, 'Sucias'),
+                            React.createElement('div', { className: 'text-2xl font-bold text-red-600' },
+                                rooms.filter(r => r.status === 'Sucia').length
+                            )
+                        ),
+                        React.createElement('div', { className: 'bg-white rounded-lg shadow p-4' },
+                            React.createElement('div', { className: 'text-sm text-gray-600' }, 'En Limpieza'),
+                            React.createElement('div', { className: 'text-2xl font-bold text-yellow-600' },
+                                rooms.filter(r => r.status === 'En Limpieza').length
+                            )
+                        ),
+                        React.createElement('div', { className: 'bg-white rounded-lg shadow p-4' },
+                            React.createElement('div', { className: 'text-sm text-gray-600' }, 'Total'),
+                            React.createElement('div', { className: 'text-2xl font-bold', style: { color: '#17355B' } },
+                                rooms.length
+                            )
+                        )
+                    )
+                ),
+
+                // Habitaciones
+                React.createElement('div', { className: 'max-w-7xl mx-auto px-4 py-6' },
+                    Object.entries(roomsByFloor).map(([floor, floorRooms]) =>
+                        React.createElement('div', { key: floor, className: 'mb-8' },
+                            React.createElement('h2', { 
+                                className: 'text-lg font-bold mb-3',
+                                style: { color: '#17355B' }
+                            }, floor),
+                            React.createElement('div', { className: 'grid grid-cols-4 gap-3' },
+                                floorRooms.map(room =>
+                                    React.createElement('button', {
+                                        key: room.id,
+                                        onClick: () => user.canEdit && setSelectedRoom(room),
+                                        disabled: !user.canEdit,
+                                        className: `${getStatusColor(room.status)} text-white p-4 rounded-lg transition hover:scale-105 ${!user.canEdit && 'opacity-75 cursor-default'}`
+                                    },
+                                        React.createElement('div', { className: 'text-center' },
+                                            React.createElement('div', { className: 'text-3xl font-bold mb-1' }, '#' + room.number),
+                                            React.createElement('div', { className: 'text-xs opacity-90 mb-1' }, room.category),
+                                            React.createElement('div', { className: 'text-xs font-semibold mt-2 border-t border-white border-opacity-30 pt-2' }, room.status)
+                                        )
+                                    )
+                                )
+                            )
+                        )
+                    )
+                ),
+
+                // Modal de cambio de estado
+                selectedRoom && React.createElement('div', { 
+                    className: 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50',
+                    onClick: () => setSelectedRoom(null)
+                },
+                    React.createElement('div', { 
+                        className: 'bg-white rounded-2xl shadow-2xl max-w-md w-full',
+                        onClick: (e) => e.stopPropagation()
+                    },
+                        React.createElement('div', { 
+                            className: `${getStatusColor(selectedRoom.status)} text-white p-6 rounded-t-2xl`
+                        },
+                            React.createElement('h3', { className: 'text-2xl font-bold' }, 'Habitación #' + selectedRoom.number),
+                            React.createElement('p', { className: 'opacity-90' }, selectedRoom.category)
+                        ),
+                        React.createElement('div', { className: 'p-6' },
+                            React.createElement('p', { className: 'text-gray-700 mb-4 font-semibold' }, 'Cambiar estado a:'),
+                            React.createElement('div', { className: 'space-y-2' },
+                                statusOptions.map(status => {
+                                    const isAllowed = canChangeToStatus(status.value);
+                                    const isCurrent = status.value === selectedRoom.status;
+                                    
+                                    return React.createElement('button', {
+                                        key: status.value,
+                                        onClick: () => isAllowed && handleStatusChange(selectedRoom.id, status.value),
+                                        disabled: !isAllowed,
+                                        className: `w-full p-3 rounded-lg font-semibold transition ${
+                                            isCurrent ? status.color + ' text-white' : 
+                                            isAllowed ? 'bg-gray-100 hover:bg-gray-200' : 
+                                            'bg-gray-100 opacity-50 cursor-not-allowed'
+                                        }`
+                                    }, status.value + (!isAllowed ? ' 🔒' : ''));
+                                })
+                            ),
+                            React.createElement('button', {
+                                onClick: () => setSelectedRoom(null),
+                                className: 'w-full mt-4 bg-gray-200 text-gray-700 p-3 rounded-lg font-semibold hover:bg-gray-300'
+                            }, 'Cancelar')
+                        )
+                    )
+                ),// Panel de Chat
+                showChat && React.createElement('div', { 
+                    className: 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50',
+                    onClick: () => setShowChat(false)
+                },
+                    React.createElement('div', { 
+                        className: 'bg-white rounded-2xl shadow-2xl w-full max-w-4xl h-5/6 flex flex-col',
+                        onClick: (e) => e.stopPropagation()
+                    },
+                        // Header del chat
+                        React.createElement('div', { 
+                            className: 'text-white p-4 rounded-t-2xl flex justify-between items-center',
+                            style: { backgroundColor: '#17355B' }
+                        },
+                            React.createElement('h3', { className: 'text-xl font-bold' }, 
+                                activeGroup ? activeGroup.name : 'Mensajería'
+                            ),
+                            React.createElement('button', {
+                                onClick: () => setShowChat(false),
+                                className: 'text-white hover:bg-white hover:bg-opacity-20 rounded-lg px-3 py-1'
+                            }, '✕')
+                        ),
+
+                        React.createElement('div', { className: 'flex flex-1 overflow-hidden' },
+                            // Lista de grupos
+                            React.createElement('div', { className: 'w-1/3 border-r overflow-y-auto' },
+                                React.createElement('div', { className: 'p-3 bg-gray-100 font-semibold text-sm' }, 'Grupos de Chat'),
+                                accessibleGroups.map(group => {
+                                    const unreadForGroup = getUnreadCountForGroup(group.id);
+                                    return React.createElement('button', {
+                                        key: group.id,
+                                        onClick: () => {
+                                            setActiveGroup(group);
+                                            markGroupAsRead(group.id);
+                                        },
+                                        className: `w-full text-left p-3 hover:bg-gray-100 border-b transition ${
+                                            activeGroup?.id === group.id ? 'bg-blue-50 border-l-4 border-blue-500' : ''
+                                        }`
+                                    },
+                                        React.createElement('div', { className: 'flex justify-between items-center' },
+                                            React.createElement('div', null,
+                                                React.createElement('div', { className: 'font-semibold' }, group.name),
+                                                React.createElement('div', { className: 'text-xs text-gray-500' }, 
+                                                    group.members.join(', ')
+                                                )
+                                            ),
+                                            unreadForGroup > 0 && React.createElement('span', {
+                                                className: 'bg-red-500 text-white text-xs rounded-full px-2 py-1 font-bold'
+                                            }, unreadForGroup)
+                                        )
+                                    );
+                                })
+                            ),
+
+                            // Área de mensajes
+                            React.createElement('div', { className: 'flex-1 flex flex-col' },
+                                !activeGroup ? 
+                                    React.createElement('div', { className: 'flex-1 flex items-center justify-center text-gray-500' },
+                                        React.createElement('div', { className: 'text-center' },
+                                            React.createElement('div', { className: 'text-4xl mb-2' }, '💬'),
+                                            React.createElement('div', null, 'Selecciona un grupo para comenzar')
+                                        )
+                                    )
+                                :
+                                React.createElement(React.Fragment, null,
+                                    // Mensajes
+                                    React.createElement('div', { className: 'flex-1 overflow-y-auto p-4 space-y-3' },
+                                        (messages[activeGroup.id] || []).map((msg, idx) => {
+                                            const isOwnMessage = msg.senderId === user.id;
+                                            return React.createElement('div', {
+                                                key: idx,
+                                                className: `flex ${isOwnMessage ? 'justify-end' : 'justify-start'}`
+                                            },
+                                                React.createElement('div', {
+                                                    className: `max-w-xs lg:max-w-md ${getPriorityColor(msg.priority)} rounded-lg p-3 ${
+                                                        isOwnMessage ? 'bg-blue-500 text-white' : ''
+                                                    }`
+                                                },
+                                                    !isOwnMessage && React.createElement('div', { 
+                                                        className: 'text-xs font-semibold mb-1',
+                                                        style: { color: isOwnMessage ? '#fff' : '#17355B' }
+                                                    }, msg.sender + ' (' + msg.senderRole + ')'),
+                                                    msg.imageUrl && React.createElement('img', {
+                                                        src: msg.imageUrl,
+                                                        className: 'max-w-full rounded mb-2 cursor-pointer',
+                                                        onClick: () => window.open(msg.imageUrl, '_blank')
+                                                    }),
+                                                    msg.text && React.createElement('div', { className: 'break-words' }, msg.text),
+                                                    React.createElement('div', { 
+                                                        className: `text-xs mt-1 ${isOwnMessage ? 'text-blue-100' : 'text-gray-500'}`
+                                                    }, new Date(msg.timestamp).toLocaleString('es-AR', {
+                                                        day: '2-digit',
+                                                        month: '2-digit',
+                                                        hour: '2-digit',
+                                                        minute: '2-digit'
+                                                    })),
+                                                    msg.priority !== 'normal' && React.createElement('div', {
+                                                        className: `text-xs font-bold mt-1 ${
+                                                            msg.priority === 'urgente' ? 'text-red-600' : 'text-gray-500'
+                                                        }`
+                                                    }, '⚠️ ' + msg.priority.toUpperCase())
+                                                )
+                                            );
+                                        })
+                                    ),
+
+                                    // Input de mensaje
+                                    React.createElement('div', { className: 'border-t p-4 bg-gray-50' },
+                                        React.createElement('div', { className: 'flex gap-2 mb-2' },
+                                            React.createElement('select', {
+                                                value: messagePriority,
+                                                onChange: (e) => setMessagePriority(e.target.value),
+                                                className: 'px-3 py-2 border rounded-lg text-sm'
+                                            },
+                                                React.createElement('option', { value: 'baja' }, '📘 Baja'),
+                                                React.createElement('option', { value: 'normal' }, '📗 Normal'),
+                                                React.createElement('option', { value: 'urgente' }, '🚨 Urgente')
+                                            ),
+                                            React.createElement('input', {
+                                                ref: fileInputRef,
+                                                type: 'file',
+                                                accept: 'image/*',
+                                                onChange: (e) => setImageFile(e.target.files[0]),
+                                                className: 'hidden'
+                                            }),
+                                            React.createElement('button', {
+                                                onClick: () => fileInputRef.current?.click(),
+                                                className: 'px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300 text-sm font-semibold'
+                                            }, '📎 Foto')
+                                        ),
+                                        imageFile && React.createElement('div', { className: 'mb-2 text-sm text-gray-600 bg-blue-50 p-2 rounded' },
+                                            '📷 ' + imageFile.name
+                                        ),
+                                        React.createElement('div', { className: 'flex gap-2' },
+                                            React.createElement('input', {
+                                                type: 'text',
+                                                value: newMessage,
+                                                onChange: (e) => setNewMessage(e.target.value),
+                                                onKeyPress: (e) => e.key === 'Enter' && handleSendMessage(),
+                                                placeholder: 'Escribe un mensaje...',
+                                                className: 'flex-1 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2'
+                                            }),
+                                            React.createElement('button', {
+                                                onClick: handleSendMessage,
+                                                className: 'px-6 py-2 text-white rounded-lg font-semibold hover:opacity-90',
+                                                style: { backgroundColor: '#17355B' }
+                                            }, 'Enviar')
+                                        )
+                                    )
+                                )
+                            )
+                        )
+                    )
+                ),
+
+                // Indicador Firebase
+                React.createElement('div', { className: 'fixed bottom-4 right-4 bg-white rounded-lg shadow-lg p-3 text-xs' },
+                    db ? '🟢 Conectado' : '🔴 Offline'
+                )
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(React.createElement(AzurHotelApp));
+    </script>
+</body>
+</html>
+
+
+
