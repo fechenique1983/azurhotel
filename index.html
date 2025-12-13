@@ -84,6 +84,9 @@
             const [showReports, setShowReports] = useState(false);
             const [reportDateFrom, setReportDateFrom] = useState('');
             const [reportDateTo, setReportDateTo] = useState('');
+            const [activeUsers, setActiveUsers] = useState([]);
+            const [userLogins, setUserLogins] = useState([]);
+            const [currentWorkingRoom, setCurrentWorkingRoom] = useState(null);
             const fileInputRef = useRef(null);
 
             const users = [
@@ -140,6 +143,7 @@
 
             const statusOptions = [
                 { value: 'Limpia', color: 'bg-green-500' },
+                { value: 'Ocupada', color: 'bg-blue-600' },
                 { value: 'Sucia', color: 'bg-red-500' },
                 { value: 'En Limpieza', color: 'bg-yellow-500' },
                 { value: 'En limpieza/servicio', color: 'bg-yellow-500' },
@@ -147,7 +151,7 @@
                 { value: 'En Control de Calidad', color: 'bg-blue-400' },
                 { value: 'Bloqueada', color: 'bg-gray-500' }
             ];
-
+            
             // Función para determinar quién debe recibir notificaciones según el rol
             const getNotificationRecipients = (changedByRole) => {
                 if (changedByRole === 'Mantenimiento') {
@@ -279,11 +283,36 @@
                 if (foundUser) {
                     setUser(foundUser);
                     setError('');
+                    
+                    // Registrar login en Firebase
+                    if (db) {
+                        const now = Date.now();
+                        const loginRecord = {
+                            userId: foundUser.id,
+                            userName: foundUser.name,
+                            role: foundUser.role,
+                            loginTime: now,
+                            logoutTime: null,
+                            active: true
+                        };
+                        
+                        // Guardar registro de login
+                        db.ref('userLogins').push(loginRecord);
+                        
+                        // Marcar usuario como activo
+                        db.ref('activeUsers/' + foundUser.id).set({
+                            userId: foundUser.id,
+                            userName: foundUser.name,
+                            role: foundUser.role,
+                            loginTime: now,
+                            currentRoom: null
+                        });
+                    }
                 } else {
                     setError('Usuario o contraseña incorrectos');
                 }
             };
-
+            
             const handleStatusChange = (roomId, newStatus) => {
                 if (!user.canEdit) return;
                 
@@ -305,6 +334,11 @@
                 };
 
                 if (db) {
+                    // Actualizar habitación en la que está trabajando
+                    db.ref('activeUsers/' + user.id).update({
+                        currentRoom: room.number,
+                        lastActivity: now
+                    });
                     db.ref('rooms/' + roomId).update({
                         status: newStatus,
                         lastUpdated: now,
@@ -427,6 +461,38 @@
                 const groupMessages = messages[groupId] || [];
                 return groupMessages.filter(msg => !msg.readBy || !msg.readBy.includes(user.id)).length;
             };
+
+            // Cargar usuarios activos
+            useEffect(() => {
+                if (!db) return;
+
+                const activeUsersRef = db.ref('activeUsers');
+                activeUsersRef.on('value', (snapshot) => {
+                    const data = snapshot.val();
+                    if (data) {
+                        setActiveUsers(Object.values(data));
+                    } else {
+                        setActiveUsers([]);
+                    }
+                });
+
+                return () => activeUsersRef.off();
+            }, []);
+
+            // Cargar historial de logins
+            useEffect(() => {
+                if (!db) return;
+
+                const loginsRef = db.ref('userLogins');
+                loginsRef.limitToLast(100).on('value', (snapshot) => {
+                    const data = snapshot.val();
+                    if (data) {
+                        setUserLogins(Object.values(data));
+                    }
+                });
+
+                return () => loginsRef.off();
+            }, []);
             
            // Cargar observaciones
             useEffect(() => {
@@ -469,10 +535,10 @@
             };
 
             const canAddObservations = (room) => {
-                if (room.status !== 'En Control de Calidad') return false;
+                if (room.status !== 'En Control de Calidad' && room.status !== 'Bloqueada') return false;
                 return user.role === 'Calidad' || user.role === 'Room Division Manager';
             };
-
+            
             const getRoomObservations = (roomId) => {
                 return observations[roomId] || [];
             };
@@ -638,6 +704,83 @@
             const canAccessReports = () => {
                 return user.role === 'Room Division Manager' || user.role === 'RRHH' || user.role === 'Calidad';
             };
+
+            // Calcular tiempo promedio de limpieza
+            const calculateAverageCleaningTime = () => {
+                const cleaningChanges = statusHistory.filter(h => 
+                    h.newStatus === 'En Limpieza' || h.newStatus === 'En limpieza/servicio'
+                );
+
+                let totalTime = 0;
+                let count = 0;
+
+                cleaningChanges.forEach(change => {
+                    const nextChange = statusHistory.find(nh => 
+                        nh.roomId === change.roomId && 
+                        nh.changedAt > change.changedAt &&
+                        (nh.previousStatus === 'En Limpieza' || nh.previousStatus === 'En limpieza/servicio')
+                    );
+                    
+                    if (nextChange) {
+                        totalTime += (nextChange.changedAt - change.changedAt);
+                        count++;
+                    }
+                });
+
+                if (count === 0) return 'N/A';
+                const avgMinutes = Math.round(totalTime / count / 60000);
+                return `${avgMinutes} min`;
+            };
+
+            // Calcular rendimiento por empleado
+            const calculateEmployeePerformance = () => {
+                const performance = {};
+                
+                statusHistory.forEach(change => {
+                    if (!performance[change.changedBy]) {
+                        performance[change.changedBy] = {
+                            name: change.changedBy,
+                            role: change.changedByRole,
+                            totalChanges: 0,
+                            roomsCleaned: 0,
+                            avgTime: 0
+                        };
+                    }
+                    
+                    performance[change.changedBy].totalChanges++;
+                    
+                    if (change.newStatus === 'Limpia' && 
+                        (change.previousStatus === 'En Limpieza' || change.previousStatus === 'En limpieza/servicio')) {
+                        performance[change.changedBy].roomsCleaned++;
+                    }
+                });
+
+                return Object.values(performance).filter(p => p.role === 'Housekeeping');
+            };
+
+            // Generar reporte de horarios de login
+            const generateLoginReport = () => {
+                const reportData = userLogins
+                    .filter(login => {
+                        if (!reportDateFrom || !reportDateTo) return true;
+                        
+                        const loginDate = new Date(login.loginTime);
+                        const fromDate = new Date(reportDateFrom);
+                        const toDate = new Date(reportDateTo);
+                        toDate.setHours(23, 59, 59);
+                        
+                        return loginDate >= fromDate && loginDate <= toDate;
+                    })
+                    .map(login => ({
+                        'Usuario': login.userName,
+                        'Rol': login.role,
+                        'Fecha': new Date(login.loginTime).toLocaleDateString('es-AR'),
+                        'Hora Entrada': new Date(login.loginTime).toLocaleTimeString('es-AR'),
+                        'Hora Salida': login.logoutTime ? new Date(login.logoutTime).toLocaleTimeString('es-AR') : 'Aún conectado'
+                    }));
+
+                exportToExcel(reportData, 'Reporte_Horarios.csv');
+            };
             
             // Filtrar grupos accesibles solo si hay usuario logueado
             const accessibleGroups = user ? chatGroups.filter(g => canAccessGroup(g)) : [];
@@ -742,14 +885,18 @@
                                     }, unreadCount > 99 ? '99+' : unreadCount)
                                 ),
                                 React.createElement('button', {
-                                    onClick: () => setUser(null),
-                                    className: 'bg-white bg-opacity-20 px-4 py-2 rounded-lg hover:bg-opacity-30 transition'
-                                }, 'Salir')
+                                    onClick: () => {
+    if (db && user) {
+        db.ref('activeUsers/' + user.id).remove();
+    }
+    setUser(null);
+}, 'Salir')
                             )
                         )
                     )
                 ),
 
+                // Dashboard de estadísticas (para Room Division Manager, Calidad y RRHH)
                 // Dashboard de estadísticas (para Room Division Manager, Calidad y RRHH)
                 (user.role === 'Room Division Manager' || user.role === 'Calidad' || user.role === 'RRHH') && React.createElement('div', { className: 'max-w-7xl mx-auto px-4 py-6' },
                     React.createElement('div', { className: 'grid grid-cols-4 gap-4 mb-6' },
@@ -768,7 +915,7 @@
                         React.createElement('div', { className: 'bg-white rounded-lg shadow p-4' },
                             React.createElement('div', { className: 'text-sm text-gray-600' }, 'En Limpieza'),
                             React.createElement('div', { className: 'text-2xl font-bold text-yellow-600' },
-                                rooms.filter(r => r.status === 'En Limpieza').length
+                                rooms.filter(r => r.status === 'En Limpieza' || r.status === 'En limpieza/servicio').length
                             )
                         ),
                         React.createElement('div', { className: 'bg-white rounded-lg shadow p-4' },
@@ -777,9 +924,86 @@
                                 rooms.length
                             )
                         )
+                    ),
+
+                    // Métricas adicionales para Room Division Manager
+                    user.role === 'Room Division Manager' && React.createElement('div', { className: 'grid grid-cols-2 gap-4 mb-6' },
+                        React.createElement('div', { className: 'bg-white rounded-lg shadow p-4' },
+                            React.createElement('div', { className: 'text-sm text-gray-600 mb-2' }, '⏱️ Tiempo Promedio Limpieza'),
+                            React.createElement('div', { className: 'text-xl font-bold text-blue-600' },
+                                calculateAverageCleaningTime()
+                            )
+                        ),
+                        React.createElement('div', { className: 'bg-white rounded-lg shadow p-4' },
+                            React.createElement('div', { className: 'text-sm text-gray-600 mb-2' }, '👥 Usuarios Activos'),
+                            React.createElement('div', { className: 'text-xl font-bold text-green-600' },
+                                activeUsers.length
+                            )
+                        )
+                    ),
+
+                    // Panel de usuarios activos (solo Room Division Manager)
+                    user.role === 'Room Division Manager' && activeUsers.length > 0 && React.createElement('div', { className: 'bg-white rounded-lg shadow p-4 mb-6' },
+                        React.createElement('h3', { 
+                            className: 'text-lg font-bold mb-3',
+                            style: { color: '#17355B' }
+                        }, '👥 Personal Activo en Tiempo Real'),
+                        React.createElement('div', { className: 'grid grid-cols-2 gap-3' },
+                            activeUsers.map(activeUser => 
+                                React.createElement('div', {
+                                    key: activeUser.userId,
+                                    className: 'bg-gray-50 p-3 rounded-lg border-l-4 border-green-500'
+                                },
+                                    React.createElement('div', { className: 'flex justify-between items-start' },
+                                        React.createElement('div', null,
+                                            React.createElement('div', { className: 'font-semibold text-gray-800' }, activeUser.userName),
+                                            React.createElement('div', { className: 'text-xs text-gray-500' }, activeUser.role),
+                                            activeUser.currentRoom && React.createElement('div', { 
+                                                className: 'text-sm text-blue-600 font-semibold mt-1' 
+                                            }, '🏠 Habitación #' + activeUser.currentRoom)
+                                        ),
+                                        React.createElement('div', { className: 'text-xs text-gray-400' },
+                                            new Date(activeUser.loginTime).toLocaleTimeString('es-AR', {
+                                                hour: '2-digit',
+                                                minute: '2-digit'
+                                            })
+                                        )
+                                    )
+                                )
+                            )
+                        )
+                    ),
+
+                    // Rendimiento por empleado (solo Room Division Manager)
+                    user.role === 'Room Division Manager' && React.createElement('div', { className: 'bg-white rounded-lg shadow p-4 mb-6' },
+                        React.createElement('h3', { 
+                            className: 'text-lg font-bold mb-3',
+                            style: { color: '#17355B' }
+                        }, '📊 Rendimiento Housekeeping Hoy'),
+                        React.createElement('div', { className: 'space-y-2' },
+                            calculateEmployeePerformance().slice(0, 5).map((emp, idx) =>
+                                React.createElement('div', {
+                                    key: idx,
+                                    className: 'flex justify-between items-center bg-gray-50 p-3 rounded-lg'
+                                },
+                                    React.createElement('div', null,
+                                        React.createElement('div', { className: 'font-semibold text-gray-800' }, emp.name),
+                                        React.createElement('div', { className: 'text-xs text-gray-500' }, emp.role)
+                                    ),
+                                    React.createElement('div', { className: 'text-right' },
+                                        React.createElement('div', { className: 'text-lg font-bold text-green-600' }, 
+                                            emp.roomsCleaned + ' hab.'
+                                        ),
+                                        React.createElement('div', { className: 'text-xs text-gray-500' }, 
+                                            emp.totalChanges + ' cambios'
+                                        )
+                                    )
+                                )
+                            )
+                        )
                     )
                 ),
-
+                                       
                 // Habitaciones
                 React.createElement('div', { className: 'max-w-7xl mx-auto px-4 py-6' },
                     Object.entries(roomsByFloor).map(([floor, floorRooms]) =>
@@ -1011,6 +1235,17 @@
                                     React.createElement('div', null,
                                         React.createElement('div', { className: 'font-bold' }, '✅ Reporte Control de Calidad'),
                                         React.createElement('div', { className: 'text-sm opacity-90' }, 'Historial con observaciones de calidad')
+                                    ),
+                                    React.createElement('span', { className: 'text-2xl' }, '⬇️')
+                                ),
+                                // Reporte de Horarios (solo RDM y RRHH)
+                                (user.role === 'Room Division Manager' || user.role === 'RRHH') && React.createElement('button', {
+                                    onClick: generateLoginReport,
+                                    className: 'w-full bg-purple-500 text-white p-4 rounded-lg font-semibold hover:bg-purple-600 text-left flex items-center justify-between'
+                                },
+                                    React.createElement('div', null,
+                                        React.createElement('div', { className: 'font-bold' }, '🕐 Reporte de Horarios'),
+                                        React.createElement('div', { className: 'text-sm opacity-90' }, 'Horarios de entrada y salida del personal')
                                     ),
                                     React.createElement('span', { className: 'text-2xl' }, '⬇️')
                                 )
