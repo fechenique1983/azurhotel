@@ -375,15 +375,19 @@
                 let imageUrl = null;
 
                 // Subir imagen si existe
-                if (imageFile) {
+                if (imageFile && storage) {
                     try {
                         const storageRef = storage.ref();
-                        const imageRef = storageRef.child(`chat-images/${activeGroup.id}/${now}_${imageFile.name}`);
-                        await imageRef.put(imageFile);
-                        imageUrl = await imageRef.getDownloadURL();
+                        const fileName = `${now}_${imageFile.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
+                        const imageRef = storageRef.child(`chat-images/${activeGroup.id}/${fileName}`);
+                        
+                        console.log('Subiendo imagen...', fileName);
+                        const uploadTask = await imageRef.put(imageFile);
+                        imageUrl = await uploadTask.ref.getDownloadURL();
+                        console.log('✅ Imagen subida:', imageUrl);
                     } catch (error) {
-                        console.error('Error subiendo imagen:', error);
-                        alert('Error al subir la imagen');
+                        console.error('❌ Error subiendo imagen:', error);
+                        alert('Error al subir la imagen: ' + error.message);
                         return;
                     }
                 }
@@ -399,19 +403,23 @@
                     readBy: [user.id]
                 };
 
-                const groupMessages = messages[activeGroup.id] || [];
-                groupMessages.push(message);
-
-                db.ref('messages/' + activeGroup.id).set(groupMessages);
-
-                setNewMessage('');
-                setMessagePriority('normal');
-                setImageFile(null);
-                if (fileInputRef.current) {
-                    fileInputRef.current.value = '';
+                try {
+                    const groupMessages = messages[activeGroup.id] || [];
+                    groupMessages.push(message);
+                    await db.ref('messages/' + activeGroup.id).set(groupMessages);
+                    
+                    console.log('✅ Mensaje enviado');
+                    setNewMessage('');
+                    setMessagePriority('normal');
+                    setImageFile(null);
+                    if (fileInputRef.current) {
+                        fileInputRef.current.value = '';
+                    }
+                } catch (error) {
+                    console.error('❌ Error enviando mensaje:', error);
+                    alert('Error al enviar mensaje: ' + error.message);
                 }
             };
-
             const markGroupAsRead = (groupId) => {
                 if (!db || !user) return;
 
