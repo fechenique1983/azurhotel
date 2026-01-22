@@ -379,7 +379,7 @@
                     try {
                         const storageRef = storage.ref();
                         const fileName = `${now}_${imageFile.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
-                        const imageRef = storageRef.child(`chat-images/${activeGroup.id}/${fileName}`);
+                        const imageRef = storageRef.child(`${fileName}`);
                         
                         console.log('Subiendo imagen...', fileName);
                         const uploadTask = await imageRef.put(imageFile);
